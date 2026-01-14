@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Admin Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+
+<div class="container mt-4">
+    <h1 class="mb-3">Admin Dashboard</h1>
+    <p class="text-muted">Logged in as <%= admin.username %></p>
+
+    <table class="table table-striped table-bordered">
+        <thead class="table-dark">
+            <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Username</th>
+                <th>Role</th>
+                <th>Phone</th>
+                <th>Postcode</th>
+            </tr>
+        </thead>
+        <tbody>
+            <% users.forEach(user => { %>
+                <tr>
+                    <td><%= user.user_id %></td>
+                    <td><%= user.firstname %> <%= user.surname %></td>
+                    <td><%= user.username %></td>
+                    <td>
+                        <span class="badge bg-secondary">
+                            <%= user.role %>
+                        </span>
+                    </td>
+                    <td><%= user.phone %></td>
+                    <td><%= user.postcode %></td>
+                </tr>
+            <% }) %>
+        </tbody>
+    </table>
+
+    <a href="/logout" class="btn btn-danger mt-3">Logout</a>
+</div>
+
+</body>
+</html>

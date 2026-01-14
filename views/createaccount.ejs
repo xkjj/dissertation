@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Sign Up</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <link rel="stylesheet" href="./styles.css">
+</head>
+
+<body>
+
+    <div class="container mt-2 py-4 mb-4 bg-dark rounded-3 text-white">
+        <div class="p-4 mb-4 lc-block">
+          <div class="lc-block">
+            <div editable="rich">
+              <h2 class="fw-bolder display-3">Sign up</h2>
+            </div>
+          </div>
+          <div class="lc-block col-md-8">
+            <div editable="rich">
+              <p class="lead">Create a user account here
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    <div class="container">
+
+        <form action="/createaccount" method="POST">
+
+            <div class="row mb-3">
+                <div class="col">
+                    <label for="formGroupExampleInput3" class="form-label">First Name</label>
+                  <input type="text" class="form-control" name="firstname_field" placeholder="First name" pattern="[A-Za-z\s]{2,30}" title="First name must be 2–30 letters" aria-label="First name" required>
+                </div>
+                <div class="col">
+                    <label for="formGroupExampleInput3" class="form-label">Surname  </label>
+                  <input type="text" class="form-control" name="surname_field" placeholder="Surname" pattern="[A-Za-z\s]{2,30}" title="Surname must be 2–30 letters" aria-label="Surname" required>
+                </div>
+              </div>
+            <div class="mb-3">
+                <label for="formGroupExampleInput3" class="form-label">Username</label>
+                <input type="text" class="form-control" name="username_field" placeholder="Enter username" pattern="[A-Za-z0-9_]{4,20}" title="Username must be 4–20 characters (letters, numbers, underscore)" required>
+            </div>
+            <div class="mb-3">
+                <label for="formGroupExampleInput4" class="form-label">Password</label>
+                <input type="password" class="form-control" name="password_field" minlength="8" placeholder="Enter password" title="Password must be at least 8 characters" required>
+            </div>
+            <div class="mb-3">
+                <label for="formGroupExampleInput4" class="form-label">Phone</label>
+                <input type="tel" class="form-control" name="phone_field" placeholder="Enter phone number" pattern="^(\+44\s?7\d{3}|\(?07\d{3}\)?)\s?\d{3}\s?\d{3}$" title="Enter a valid UK mobile number" required>
+            </div>
+            <div class="mb-3">
+                <label for="formGroupExampleInput4" class="form-label">Address</label>
+                <input type="text" class="form-control" name="address_field" placeholder="Enter address" required>
+            </div>
+            <div class="mb-3">
+                <label for="formGroupExampleInput4" class="form-label">Postcode</label>
+                <input type="text" class="form-control" name="postcode_field" placeholder="Enter postcode" pattern="^[A-Z]{1,2}\d[A-Z\d]?\s?\d[A-Z]{2}$" title="Enter a valid UK postcode" required>
+            </div>
+            <div class="mb-3">
+                <button class="btn btn-dark" type="submit">Sign Up</button>
+                <a class="btn btn-outlline-dark" href="/" role="button">Cancel</a>
+            </div>
+        </form>
+</body>
+
+</html>

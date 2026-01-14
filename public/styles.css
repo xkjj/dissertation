@@ -1,0 +1,26 @@
+.btn-outline-dark:focus{
+    box-shadow:none;
+}
+
+@media screen and (max-width:768px) {
+    .btn-outline-dark{
+        border:none;
+        padding:0;
+        outline:none;
+    }
+
+    .btn-outline-dark:hover{
+        background:none;
+        color:black;
+    }
+
+}
+
+.navbar{
+    padding-bottom: 20px;
+}
+
+.card{
+    margin-bottom: 10px;
+}
+

@@ -79,6 +79,10 @@ app.post('/', (req, res) => {
 
         const user = results[0];
 
+        if (user.is_active === 0) {
+            return res.send("This account has been disabled");
+        }
+
         bcrypt.compare(password_field, user.password, (err, match) => {
             if (err) return res.send("Authentication error");
 
@@ -196,10 +200,9 @@ app.get('/admin/dashboard',
     (req, res) => {
 
         const getUsersSQL = `
-            SELECT user_id, firstname, surname, username, role, phone, postcode
+            SELECT user_id, firstname, surname, username, role, phone, postcode, is_active
             FROM users
-            ORDER BY role, surname
-        `;
+            ORDER BY role, surname`;
 
         db.query(getUsersSQL, (err, users) => {
             if (err) {
@@ -211,6 +214,209 @@ app.get('/admin/dashboard',
                 admin: req.session.user,
                 users
             });
+        });
+    }
+);
+
+app.post('/admin/update-role',
+    requireLogin,
+    requireRole('system_admin', 'charity_admin'),
+    (req, res) => {
+
+        const { user_id, role } = req.body;
+
+        // Prevent changes to system admin
+        const protectSQL = `
+            SELECT role FROM users WHERE user_id = ?
+        `;
+
+        db.query(protectSQL, [user_id], (err, rows) => {
+            if (err) {
+                console.error(err);
+                return res.send("Database error");
+            }
+
+            if (rows.length === 0) {
+                return res.send("User not found");
+            }
+
+            if (rows[0].role === 'system_admin') {
+                return res.send("System admin role cannot be changed");
+            }
+
+            const updateRoleSQL = `
+                UPDATE users SET role = ? WHERE user_id = ?
+            `;
+
+            db.query(updateRoleSQL, [role, user_id], err => {
+                if (err) {
+                    console.error(err);
+                    return res.send("Failed to update role");
+                }
+                res.redirect('/admin/dashboard');
+            });
+        });
+    }
+);
+
+
+app.post('/admin/toggle-user',
+    requireLogin,
+    requireRole('sys_admin', 'charity_admin'),
+    (req, res) => {
+
+        const { user_id } = req.body;
+
+        const protectSQL = `
+            SELECT role FROM users WHERE user_id = ?`;
+
+            db.query(protectSQL, [user_id], (err, rows) => {
+                if (rows[0].role === 'sys_admin') {
+                    return res.send("System admin cannot be disabled");
+                }
+
+                const toggleSQL = `UPDATE users
+                                    SET is_active = IF(is_active = 1, 0, 1)
+                                    WHERE user_id = ?`;
+
+        db.query(toggleSQL, [user_id], err => {
+            if (err) {
+                console.error(err);
+                return res.send("Failed to update user status");
+            }
+            res.redirect('/admin/dashboard');
+        });
+            });
+
+    }
+);
+
+app.get('/items/new',
+    requireLogin,
+    (req, res) => {
+        res.render('items/new');
+    }
+);
+
+app.get('/items', (req, res) => {
+
+    const sql = `
+        SELECT clothing_items.*, users.username
+        FROM clothing_items
+        JOIN users ON clothing_items.user_id = users.user_id
+        WHERE status = 'available'
+        ORDER BY created_at DESC
+    `;
+
+    db.query(sql, (err, items) => {
+        if (err) return res.send("Error loading items");
+        res.render('items/index', { items });
+    });
+});
+
+
+app.post('/items',
+    requireLogin,
+    (req, res) => {
+
+        const { title, description, category, size, condition_desc } = req.body;
+
+        const insertItemSQL = `
+            INSERT INTO clothing_items
+            (user_id, title, description, category, size, condition_desc)
+            VALUES (?, ?, ?, ?, ?, ?)
+        `;
+
+        db.query(
+            insertItemSQL,
+            [
+                req.session.user.user_id,
+                title,
+                description,
+                category,
+                size,
+                condition_desc
+            ],
+            err => {
+                if (err) {
+                    console.error(err);
+                    return res.send("Failed to create item");
+                }
+                res.redirect('/items/my');
+            }
+        );
+    }
+);
+
+app.get('/items/my',
+    requireLogin,
+    (req, res) => {
+
+        const sql = `
+            SELECT *
+            FROM clothing_items
+            WHERE user_id = ?
+        `;
+
+        db.query(sql, [req.session.user.user_id], (err, items) => {
+            if (err) return res.send("Error");
+            res.render('items/my', { items });
+        });
+    }
+);
+
+app.get('/items/:id/edit',
+    requireLogin,
+    (req, res) => {
+
+        const sql = `
+            SELECT *
+            FROM clothing_items
+            WHERE item_id = ? AND user_id = ?
+        `;
+
+        db.query(sql, [req.params.id, req.session.user.user_id], (err, rows) => {
+            if (rows.length === 0) return res.send("Not allowed");
+            res.render('items/edit', { item: rows[0] });
+        });
+    }
+);
+
+app.post('/items/:id',
+    requireLogin,
+    (req, res) => {
+
+        const { title, description, category, size, condition_desc } = req.body;
+
+        const sql = `
+            UPDATE clothing_items
+            SET title = ?, description = ?, category = ?, size = ?, condition_desc = ?
+            WHERE item_id = ? AND user_id = ?
+        `;
+
+        db.query(
+            sql,
+            [title, description, category, size, condition_desc, req.params.id, req.session.user.user_id],
+            err => {
+                if (err) return res.send("Update failed");
+                res.redirect('/items/my');
+            }
+        );
+    }
+);
+
+app.post('/items/:id/delete',
+    requireLogin,
+    (req, res) => {
+
+        const sql = `
+            DELETE FROM clothing_items
+            WHERE item_id = ? AND user_id = ?
+        `;
+
+        db.query(sql, [req.params.id, req.session.user.user_id], err => {
+            if (err) return res.send("Delete failed");
+            res.redirect('/items/my');
         });
     }
 );

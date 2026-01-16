@@ -41,6 +41,30 @@
                             Condition: <%= item.condition_desc %>
                         </p>
 
+                        <% if (user && user.user_id !== item.user_id) { %>
+
+                            <% if (item.status !== 'available') { %>
+                                <button class="btn btn-sm btn-secondary mt-2" disabled>
+                                    Unavailable
+                                </button>
+
+                            <% } else if (item.has_requested > 0) { %>
+                                <button class="btn btn-sm btn-outline-success mt-2" disabled>
+                                    Requested
+                                </button>
+
+                            <% } else { %>
+                                <form action="/requests" method="POST" class="mt-2">
+                                    <input type="hidden" name="item_id" value="<%= item.item_id %>">
+                                    <button class="btn btn-sm btn-dark">
+                                        Request Item
+                                    </button>
+                                </form>
+                            <% } %>
+
+                        <% } %>
+
+
                         <small class="text-muted">
                             Donated by: <%= item.username %>
                         </small>

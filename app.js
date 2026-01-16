@@ -23,6 +23,12 @@ app.use(sessions({
 
 app.use(cookieParser());
 
+app.use((req, res, next) => {
+    res.locals.user = req.session.user || null;
+    next();
+});
+
+
 const db = mysql.createConnection({
 
     host: "localhost",
@@ -59,12 +65,13 @@ function requireRole(...allowedRoles) {
     };
 }
 
-//routes
+//routes - render login page on startup
 app.get("/", (req, res) => {
 
     res.render('login');
 });
 
+//
 app.post('/', (req, res) => {
     const { username_field, password_field } = req.body;
 
@@ -83,6 +90,7 @@ app.post('/', (req, res) => {
             return res.send("This account has been disabled");
         }
 
+        //match hashed password to password entered by user
         bcrypt.compare(password_field, user.password, (err, match) => {
             if (err) return res.send("Authentication error");
 
@@ -96,16 +104,16 @@ app.post('/', (req, res) => {
                 role: user.role
             };
 
+            //redirect admin roles to dashboard
             if (user.role === 'sys_admin' || user.role === 'charity_admin') {
              return res.redirect('/admin/dashboard');
                 }           
-
             res.redirect('/homepage');
         });
     });
 });
 
-
+//Account creation page
 app.get('/createaccount', (req, res) => {
     res.render('createaccount');
 });
@@ -121,7 +129,7 @@ app.post('/createaccount', (req, res) => {
         postcode_field
     } = req.body;
 
-    // Basic presence check
+    //Basic presence check
     if (
         !firstname_field || !surname_field || !username_field ||
         !password_field || !phone_field || !address_field || !postcode_field
@@ -129,7 +137,7 @@ app.post('/createaccount', (req, res) => {
         return res.send("All fields are required");
     }
 
-    // Length checks
+    //Length checks
     if (username_field.length < 4 || username_field.length > 20) {
         return res.send("Username must be 4–20 characters");
     }
@@ -138,13 +146,13 @@ app.post('/createaccount', (req, res) => {
         return res.send("Password must be at least 8 characters");
     }
 
-    // Regex checks (server-side)
+    //Regex checks (server-side)
     const postcodeRegex = /^[A-Z]{1,2}\d[A-Z\d]?\s?\d[A-Z]{2}$/i;
     if (!postcodeRegex.test(postcode_field)) {
         return res.send("Invalid postcode format");
     }
 
-    // Check for duplicate username
+    //Check for duplicate username
     const checkUserSQL = "SELECT * FROM users WHERE username = ?";
     db.query(checkUserSQL, [username_field], (err, results) => {
         if (err) return res.send("Database error");
@@ -153,9 +161,10 @@ app.post('/createaccount', (req, res) => {
             return res.send("Username already exists");
         }
 
+    //Password hashing
     const plainPassword = password_field;
 
-bcrypt.hash(plainPassword, SALT_ROUNDS, (err, hashedPassword) => {
+    bcrypt.hash(plainPassword, SALT_ROUNDS, (err, hashedPassword) => {
     if (err) return res.send("Error securing password");
 
     const insertUsersSQL = `
@@ -164,6 +173,7 @@ bcrypt.hash(plainPassword, SALT_ROUNDS, (err, hashedPassword) => {
         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
+    //insert user into DB
     db.query(
         insertUsersSQL,
         [
@@ -185,20 +195,23 @@ bcrypt.hash(plainPassword, SALT_ROUNDS, (err, hashedPassword) => {
     });
 });
 
+//render homepage if user is logged in
 app.get("/homepage", requireLogin, (req, res) => {
     res.render("homepage", { user: req.session.user });
 });
 
+//page for successful account creation
 app.get("/usercreated", (req, res) => {
         res.render('usercreated');
 });
 
-
+//Admin dashboard
 app.get('/admin/dashboard',
     requireLogin,
-    requireRole('sys_admin', 'charity_admin'),
+    requireRole('sys_admin', 'charity_admin'), //required roles to gain access
     (req, res) => {
 
+        //query to list all users with accounts
         const getUsersSQL = `
             SELECT user_id, firstname, surname, username, role, phone, postcode, is_active
             FROM users
@@ -218,6 +231,7 @@ app.get('/admin/dashboard',
     }
 );
 
+//update user role
 app.post('/admin/update-role',
     requireLogin,
     requireRole('system_admin', 'charity_admin'),
@@ -244,6 +258,7 @@ app.post('/admin/update-role',
                 return res.send("System admin role cannot be changed");
             }
 
+            //update role for selected user in dashboard
             const updateRoleSQL = `
                 UPDATE users SET role = ? WHERE user_id = ?
             `;
@@ -259,7 +274,7 @@ app.post('/admin/update-role',
     }
 );
 
-
+//disable accounts in dashboard
 app.post('/admin/toggle-user',
     requireLogin,
     requireRole('sys_admin', 'charity_admin'),
@@ -267,6 +282,7 @@ app.post('/admin/toggle-user',
 
         const { user_id } = req.body;
 
+        //prevent admin accounts from being disabled
         const protectSQL = `
             SELECT role FROM users WHERE user_id = ?`;
 
@@ -275,6 +291,7 @@ app.post('/admin/toggle-user',
                     return res.send("System admin cannot be disabled");
                 }
 
+                //update users to active/inactive accounts
                 const toggleSQL = `UPDATE users
                                     SET is_active = IF(is_active = 1, 0, 1)
                                     WHERE user_id = ?`;
@@ -291,6 +308,38 @@ app.post('/admin/toggle-user',
     }
 );
 
+//List all available items uploaded by other users
+app.get('/items', (req, res) => {
+
+    const userId = req.session.user ? req.session.user.user_id : null;
+
+    const sql = `
+        SELECT 
+            clothing_items.*,
+            users.username,
+            (
+                SELECT COUNT(*) 
+                FROM item_requests 
+                WHERE item_requests.item_id = clothing_items.item_id
+                AND item_requests.requester_id = ?
+            ) AS has_requested
+        FROM clothing_items
+        JOIN users ON clothing_items.user_id = users.user_id
+        ORDER BY clothing_items.created_at DESC
+    `;
+
+    db.query(sql, [userId], (err, items) => {
+        if (err) {
+            console.error(err);
+            return res.send("Error loading items");
+        }
+
+        res.render('items/index', { items });
+    });
+});
+
+
+//item creation page
 app.get('/items/new',
     requireLogin,
     (req, res) => {
@@ -298,23 +347,7 @@ app.get('/items/new',
     }
 );
 
-app.get('/items', (req, res) => {
-
-    const sql = `
-        SELECT clothing_items.*, users.username
-        FROM clothing_items
-        JOIN users ON clothing_items.user_id = users.user_id
-        WHERE status = 'available'
-        ORDER BY created_at DESC
-    `;
-
-    db.query(sql, (err, items) => {
-        if (err) return res.send("Error loading items");
-        res.render('items/index', { items });
-    });
-});
-
-
+//create new clothing item and insert into DB
 app.post('/items',
     requireLogin,
     (req, res) => {
@@ -348,6 +381,7 @@ app.post('/items',
     }
 );
 
+//page for listing every clothing item uploaded by user
 app.get('/items/my',
     requireLogin,
     (req, res) => {
@@ -365,6 +399,7 @@ app.get('/items/my',
     }
 );
 
+//edit items uploaded by user
 app.get('/items/:id/edit',
     requireLogin,
     (req, res) => {
@@ -382,6 +417,7 @@ app.get('/items/:id/edit',
     }
 );
 
+//update clothing item after editing
 app.post('/items/:id',
     requireLogin,
     (req, res) => {
@@ -405,6 +441,7 @@ app.post('/items/:id',
     }
 );
 
+//delete clothing item
 app.post('/items/:id/delete',
     requireLogin,
     (req, res) => {
@@ -421,15 +458,139 @@ app.post('/items/:id/delete',
     }
 );
 
-
-app.get('/user/profile',
+//admin feature for approving requests for clothing submitted by other users
+app.get('/admin/requests',
     requireLogin,
-    requireRole('user'),
+    requireRole('sys_admin', 'charity_admin'),
     (req, res) => {
-        res.render('profile');
+
+        const sql = `
+            SELECT
+                item_requests.request_id,
+                item_requests.status,
+                users.username AS requester,
+                clothing_items.title
+            FROM item_requests
+            JOIN users ON item_requests.requester_id = users.user_id
+            JOIN clothing_items ON item_requests.item_id = clothing_items.item_id
+            WHERE item_requests.status = 'pending'
+        `;
+
+        db.query(sql, (err, requests) => {
+            if (err) return res.send("Error loading requests");
+            res.render('admin_requests', { requests });
+        });
     }
 );
 
+//send requests into DB route
+app.post('/requests',
+    requireLogin,
+    (req, res) => {
+
+        const { item_id } = req.body;
+
+        // Prevent duplicate requests
+        const checkSQL = `
+            SELECT * FROM item_requests
+            WHERE item_id = ? AND requester_id = ?
+        `;
+
+        db.query(checkSQL, [item_id, req.session.user.user_id], (err, rows) => {
+            if (rows.length > 0) {
+                return res.send("You have already requested this item");
+            }
+
+            const insertSQL = `
+                INSERT INTO item_requests (item_id, requester_id)
+                VALUES (?, ?)
+            `;
+
+            db.query(insertSQL, [item_id, req.session.user.user_id], err => {
+                if (err) {
+                    console.error(err);
+                    return res.send("Request failed");
+                }
+
+                res.redirect('/items');
+            });
+        });
+    }
+);
+
+// admin approval of clothing requests
+app.post('/admin/requests/:id/approve',
+    requireLogin,
+    requireRole('sys_admin', 'charity_admin'),
+    (req, res) => {
+
+        const requestId = req.params.id;
+
+        const sql = `
+            UPDATE item_requests
+            JOIN clothing_items ON item_requests.item_id = clothing_items.item_id
+            SET
+                item_requests.status = 'approved',
+                clothing_items.status = 'reserved'
+            WHERE item_requests.request_id = ?
+        `;
+
+        db.query(sql, [requestId], err => {
+            if (err) return res.send("Approval failed");
+            res.redirect('/admin/requests');
+        });
+    }
+);
+
+//admin rejection of clothing requests
+app.post('/admin/requests/:id/reject',
+    requireLogin,
+    requireRole('sys_admin', 'charity_admin'),
+    (req, res) => {
+
+        const sql = `
+            UPDATE item_requests
+            SET status = 'rejected'
+            WHERE request_id = ?
+        `;
+
+        db.query(sql, [req.params.id], err => {
+            if (err) return res.send("Rejection failed");
+            res.redirect('/admin/requests');
+        });
+    }
+);
+
+//view all requests for user
+app.get('/requests/my',
+    requireLogin,
+    (req, res) => {
+
+        const sql = `
+            SELECT
+                clothing_items.title,
+                item_requests.status
+            FROM item_requests
+            JOIN clothing_items ON item_requests.item_id = clothing_items.item_id
+            WHERE requester_id = ?
+        `;
+
+        db.query(sql, [req.session.user.user_id], (err, requests) => {
+            if (err) return res.send("Error");
+            res.render('requests/my', { requests });
+        });
+    }
+);
+
+// app.get('/user/profile',
+//     requireLogin,
+//     requireRole('user'),
+//     (req, res) => {
+//         res.render('profile');
+//     }
+// );
+
+//Destroy session on logging out
 app.get('/logout', (req, res) => {
     req.session.destroy(() => {
         res.redirect('/');

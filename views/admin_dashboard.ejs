@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Admin Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+
+<div class="container mt-4">
+    <h1 class="mb-3">Admin Dashboard</h1>
+    <p class="text-muted">Logged in as <%= admin.username %></p>
+
+    <table class="table table-striped table-bordered">
+        <thead class="table-dark">
+            <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Username</th>
+                <th>Role</th>
+                <th>Phone</th>
+                <th>Postcode</th>
+                <th>Status</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            <% users.forEach(user => { %>
+                <tr>
+                    <td><%= user.user_id %></td>
+                    <td><%= user.firstname %> <%= user.surname %></td>
+                    <td><%= user.username %></td>
+                    <td>
+                        <% if (user.role === 'sys_admin') { %>
+                            <span class="badge bg-dark">System Admin</span>
+                        <% } else { %>
+                            <form action="/admin/update-role" method="POST" class="d-flex gap-2">
+                                <input type="hidden" name="user_id" value="<%= user.user_id %>">
+
+                                <select name="role" class="form-select form-select-sm">
+                                <option value="user" <%= user.role === 'user' ? 'selected' : '' %>>User</option>
+                                <option value="charity_admin" <%= user.role === 'charity_admin' ? 'selected' : '' %>>Charity Admin</option>
+                                </select>
+
+                                <button class="btn btn-sm btn-primary">Save</button>
+                            </form>
+                        <% } %>
+                    </td>
+                    <td><%= user.phone %></td>
+                    <td><%= user.postcode %></td>
+                    <td>
+                        <span class="badge <%= user.is_active ? 'bg-success' : 'bg-danger' %>">
+                            <%= user.is_active ? 'Active' : 'Disabled' %>
+                        </span>
+                        </td>
+                        <td>
+                            <% if (user.role === 'sys_admin') { %>
+                            <span class="badge bg-dark">N/A</span>
+                             <% } else { %>
+                            <form action="/admin/toggle-user" method="POST">
+                                <input type="hidden" name="user_id" value="<%= user.user_id %>">
+
+                                <% if (Number(user.is_active) === 1) { %>
+                                <button class="btn btn-sm btn-warning">Disable</button>
+                                <% } else { %>
+                                <button class="btn btn-sm btn-success">Enable</button>
+                                    <% } %>
+                             <% } %>
+                            </form>
+                        </td>
+                </tr>
+            <% }) %>
+        </tbody>
+    </table>
+
+    <a href="/logout" class="btn btn-dark mt-3">Logout</a>
+    <a href="/homepage" class="btn btn-dark mt-3">Homepage</a>
+    <a href="/admin/requests" class="btn btn-dark mt-3">View requests</a>
+</div>
+
+</body>
+</html>

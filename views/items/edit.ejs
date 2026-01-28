@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Edit Clothing Item</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="container mt-4">
+
+<h2>Edit Clothing Item</h2>
+
+<form action="/items/<%= item.item_id %>" method="POST">
+
+    <div class="mb-3">
+        <label class="form-label">Title</label>
+        <input class="form-control" name="title" value="<%= item.title %>" required>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Description</label>
+        <textarea class="form-control" name="description"><%= item.description %></textarea>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Category</label>
+        <select class="form-select" name="category" required>
+            <% ['Men','Women','Children','Unisex'].forEach(cat => { %>
+                <option value="<%= cat %>" <%= item.category === cat ? 'selected' : '' %>>
+                    <%= cat %>
+                </option>
+            <% }) %>
+        </select>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Size</label>
+        <select class="form-select" name="size" required>
+            <% ['XS','S','M','L','XL','XXL'].forEach(size => { %>
+                <option value="<%= size %>" <%= item.size_desc === size ? 'selected' : '' %>>
+                    <%= size %>
+                </option>
+            <% }) %>
+        </select>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Condition</label>
+        <select class="form-select" name="condition_desc" required>
+            <% ['New','Good','Worn'].forEach(cond => { %>
+                <option value="<%= cond %>" <%= item.condition_desc === cond ? 'selected' : '' %>>
+                    <%= cond %>
+                </option>
+            <% }) %>
+        </select>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Assign to Charity Centre</label>
+            <select name="charity_id" class="form-select">
+                <option value="">-- No charity assigned --</option>
+                <% charity_centres.forEach(charity => { %>
+                    <option value="<%= charity.charity_id %>"
+                        <%= item.charity_id === charity.charity_id ? 'selected' : '' %>>
+                        <%= charity.charity_name %>
+                    </option>
+                <% }) %>
+             </select>
+    </div>
+
+
+    <button class="btn btn-primary">Save Changes</button>
+    <a href="/items/my" class="btn btn-secondary">Cancel</a>
+
+</form>
+
+</body>
+</html>

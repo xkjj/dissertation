@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>My Clothing Listings</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="container mt-4">
+
+<h2 class="mb-4">My Clothing Listings</h2>
+
+<a href="/items/new" class="btn btn-dark mb-3">Add New Item</a>
+
+<% if (items.length === 0) { %>
+    <p>You have not listed any clothing items yet.</p>
+<% } %>
+
+<% items.forEach(item => { %>
+    <div class="card mb-3">
+        <div class="card-body">
+            <h5 class="card-title"><%= item.title %></h5>
+
+            <p class="card-text"><%= item.description %></p>
+
+            <p class="text-muted">
+                Category: <%= item.category %> |
+                Size: <%= item.size || 'N/A' %> |
+                Condition: <%= item.condition_desc %> |
+                Assigned Charity: <%= item.charity_name ? item.charity_name : 'Not assigned' %>
+            </p>
+
+            <p>Status: <strong><%= item.status %></strong></p>
+
+            <a href="/items/<%= item.item_id %>/edit" class="btn btn-sm btn-secondary">Edit</a>
+
+            <form action="/items/<%= item.item_id %>/delete" method="POST" style="display:inline;">
+                <button class="btn btn-sm btn-danger"
+                        onclick="return confirm('Are you sure you want to delete this item?');">
+                    Delete
+                </button>
+            </form>
+        </div>
+    </div>
+<% }) %>
+
+<a href="/homepage" class="btn btn-outline-dark mt-3">Back</a>
+
+</body>
+</html>

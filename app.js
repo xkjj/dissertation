@@ -65,6 +65,14 @@ function requireRole(...allowedRoles) {
     };
 }
 
+function requireSystemAdmin(req, res, next) {
+    if (!req.session.user || req.session.user.role !== 'sys_admin') {
+        return res.status(403).send("Access denied");
+    }
+    next();
+}
+
+
 //routes - render login page on startup
 app.get("/", (req, res) => {
 
@@ -223,7 +231,7 @@ app.get('/admin/dashboard',
                 return res.send("Database error");
             }
 
-            res.render('admin_dashboard', {
+            res.render('admin/dashboard', {
                 admin: req.session.user,
                 users
             });
@@ -323,16 +331,18 @@ app.get('/items', (req, res) => {
             clothing_items.condition_desc,
             clothing_items.status,
             clothing_items.charity_id,
+            clothing_items.user_id AS owner_id,
 
             charity_centres.charity_name AS charity_name,
             users.username,
 
             (
-                SELECT COUNT(*) 
-                FROM item_requests 
+                SELECT status
+                FROM item_requests
                 WHERE item_requests.item_id = clothing_items.item_id
                 AND item_requests.requester_id = ?
-            ) AS has_requested
+                LIMIT 1
+            ) AS request_status
 
         FROM clothing_items
         JOIN users ON clothing_items.user_id = users.user_id
@@ -660,6 +670,128 @@ app.get('/requests/my',
         });
     }
 );
+
+app.get('/admin/charity-centres',
+    requireLogin,
+    requireSystemAdmin,
+    (req, res) => {
+
+        const sql = `
+            SELECT *
+            FROM charity_centres
+            ORDER BY charity_name
+        `;
+
+        db.query(sql, (err, centres) => {
+            if (err) {
+                console.error(err);
+                return res.send("Error loading charity centres");
+            }
+            res.render('admin/charity_centres/index', { centres });
+        });
+    }
+);
+
+app.get('/admin/charity-centres/new',
+    requireLogin,
+    requireSystemAdmin,
+    (req, res) => {
+        res.render('admin/charity_centres/new');
+    }
+);
+
+app.post('/admin/charity-centres/new',
+    requireLogin,
+    requireSystemAdmin,
+    (req, res) => {
+
+        const { charity_name, charity_address, charity_postcode, charity_email, charity_phone } = req.body;
+
+        if (!charity_name || !charity_address || !charity_postcode) {
+            return res.send("Required fields missing");
+        }
+
+        const sql = `
+            INSERT INTO charity_centres
+            (charity_name, charity_address, charity_postcode, charity_email, charity_phone, is_active)
+            VALUES (?, ?, ?, ?, ?, 1)
+        `;
+
+        db.query(sql, [charity_name, charity_address, charity_postcode, charity_email, charity_phone], err => {
+            if (err) {
+                console.error(err);
+                return res.send("Insert failed");
+            }
+            res.redirect('/admin/charity-centres');
+        });
+    }
+);
+
+app.get('/admin/charity-centres/:id/edit',
+    requireLogin,
+    requireSystemAdmin,
+    (req, res) => {
+
+        const sql = `
+            SELECT *
+            FROM charity_centres
+            WHERE charity_id = ?
+        `;
+
+        db.query(sql, [req.params.id], (err, results) => {
+            if (err || results.length === 0) {
+                return res.send("Charity centre not found");
+            }
+
+            res.render('admin/charity_centres/edit', {
+                centre: results[0]
+            });
+        });
+    }
+);
+
+app.post('/admin/charity-centres/:id/edit',
+    requireLogin,
+    requireSystemAdmin,
+    (req, res) => {
+
+        const { charity_name, charity_address, charity_postcode, charity_email, charity_phone, is_active } = req.body;
+
+        const sql = `
+            UPDATE charity_centres
+            SET
+                charity_name = ?,
+                charity_address = ?,
+                charity_postcode = ?,
+                charity_email = ?,
+                charity_phone = ?,
+                is_active = ?
+            WHERE charity_id = ?
+        `;
+
+        db.query(
+            sql,
+            [
+                charity_name,
+                charity_address,
+                charity_postcode,
+                charity_email,
+                charity_phone,
+                is_active === '1' ? 1 : 0, //
+                req.params.id
+            ],
+            err => {
+                if (err) {
+                    console.error(err);
+                    return res.send("Update failed");
+                }
+                res.redirect('/admin/charity-centres');
+            }
+        );
+    }
+);
+
+
 
 // app.get('/user/profile',
 //     requireLogin,

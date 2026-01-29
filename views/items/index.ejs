@@ -47,17 +47,32 @@
                             Charity: <%= item.charity_name ? item.charity_name : 'Not assigned' %>
                         </p>
 
-                        <% if (user && user.user_id !== item.user_id) { %>
+                        <% if (user) { %>
 
                             <% if (item.status !== 'available') { %>
                                 <button class="btn btn-sm btn-secondary mt-2" disabled>
                                     Unavailable
                                 </button>
 
-                            <% } else if (item.has_requested > 0) { %>
-                                <button class="btn btn-sm btn-outline-success mt-2" disabled>
-                                    Requested
+                            <% } else if (user.user_id === item.owner_id) { %>
+                                <button class="btn btn-sm btn-secondary mt-2" disabled>
+                                    Your Item
                                 </button>
+
+                            <% } else if (item.request_status === 'approved') { %>
+                                <button class="btn btn-sm btn-outline-success mt-2" disabled>
+                                    Approved
+                                </button>
+
+                            <% } else if (item.request_status === 'pending') { %>
+                                <button class="btn btn-sm btn-outline-warning mt-2" disabled>
+                                    Request Pending
+                                </button>   
+
+                             <% } else if (item.request_status === 'rejected') { %>
+                                <button class="btn btn-sm btn-outline-danger mt-2" disabled>
+                                    Rejected
+                                </button>   
 
                             <% } else { %>
                                 <form action="/requests" method="POST" class="mt-2">

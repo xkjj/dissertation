@@ -242,7 +242,7 @@ app.get('/admin/dashboard',
 //update user role
 app.post('/admin/update-role',
     requireLogin,
-    requireRole('system_admin', 'charity_admin'),
+    requireRole('sys_admin', 'charity_admin'),
     (req, res) => {
 
         const { user_id, role } = req.body;
@@ -262,7 +262,7 @@ app.post('/admin/update-role',
                 return res.send("User not found");
             }
 
-            if (rows[0].role === 'system_admin') {
+            if (rows[0].role === 'sys_admin') {
                 return res.send("System admin role cannot be changed");
             }
 
@@ -676,21 +676,43 @@ app.get('/admin/charity-centres',
     requireSystemAdmin,
     (req, res) => {
 
-        const sql = `
-            SELECT *
-            FROM charity_centres
-            ORDER BY charity_name
+        const charitiesSQL = `
+            SELECT 
+                c.charity_id,
+                c.charity_name,
+                c.charity_address,
+                c.charity_postcode,
+                c.is_active,
+                u.user_id AS admin_id,
+                u.username AS admin_username
+            FROM charity_centres c
+            LEFT JOIN users u
+                ON c.charity_id = u.charity_id
+                AND u.role = 'charity_admin'
         `;
 
-        db.query(sql, (err, centres) => {
-            if (err) {
-                console.error(err);
-                return res.send("Error loading charity centres");
-            }
-            res.render('admin/charity_centres/index', { centres });
+        const adminsSQL = `
+                SELECT user_id, username, charity_id
+                FROM users
+                WHERE role = 'charity_admin'
+                AND is_active = 1
+            `;
+
+        db.query(adminsSQL, (err, admins) => {
+            if (err) return res.send("Error loading admins");
+
+            db.query(charitiesSQL, (err, charities) => {
+                if (err) return res.send("Error loading charities");
+
+                res.render('admin/charity_centres/index', {
+                    charities,
+                    admins
+                });
+            });
         });
     }
 );
+
 
 app.get('/admin/charity-centres/new',
     requireLogin,
@@ -750,17 +772,26 @@ app.get('/admin/charity-centres/:id/edit',
     }
 );
 
-app.post('/admin/charity-centres/:id/edit',
+app.post('/admin/charity-centres/:id/edit/',
     requireLogin,
     requireSystemAdmin,
     (req, res) => {
 
-        const { charity_name, charity_address, charity_postcode, charity_email, charity_phone, is_active } = req.body;
+        const charityId = req.params.id;
+        const {
+            charity_name,
+            charity_address,
+            charity_postcode,
+            charity_email,
+            charity_phone,
+            is_active
+        } = req.body;
 
-        const sql = `
+        const activeValue = is_active === '1' ? 1 : 0;
+
+        const updateSQL = `
             UPDATE charity_centres
-            SET
-                charity_name = ?,
+            SET charity_name = ?,
                 charity_address = ?,
                 charity_postcode = ?,
                 charity_email = ?,
@@ -769,25 +800,115 @@ app.post('/admin/charity-centres/:id/edit',
             WHERE charity_id = ?
         `;
 
-        db.query(
-            sql,
+        db.query(updateSQL,
             [
                 charity_name,
                 charity_address,
                 charity_postcode,
                 charity_email,
                 charity_phone,
-                is_active === '1' ? 1 : 0, //
-                req.params.id
+                activeValue,
+                charityId
             ],
-            err => {
+            (err) => {
+
                 if (err) {
                     console.error(err);
                     return res.send("Update failed");
                 }
-                res.redirect('/admin/charity-centres');
+
+                // IF charity was deactivated — remove admin
+                if (activeValue === 0) {
+
+                    const removeAdminSQL = `
+                        UPDATE users
+                        SET charity_id = NULL
+                        WHERE charity_id = ?
+                        AND role = 'charity_admin'
+                    `;
+
+                    db.query(removeAdminSQL, [charityId], (err) => {
+                        if (err) {
+                            console.error("Admin removal failed:", err);
+                        }
+
+                        return res.redirect('/admin/charity-centres');
+                    });
+
+                } else {
+                    res.redirect('/admin/charity-centres');
+                }
+
             }
         );
+    }
+);
+
+
+app.post('/admin/charity-centres/assign-admin',
+    requireLogin,
+    requireSystemAdmin,
+    (req, res) => {
+
+        const { charity_id, user_id } = req.body;
+
+        if (!charity_id || !user_id)
+            return res.send("Invalid data");
+
+        // Remove any existing admin for this charity
+        const removeExisting = `
+            UPDATE users
+            SET charity_id = NULL
+            WHERE charity_id = ?
+            AND role = 'charity_admin'
+        `;
+
+        db.query(removeExisting, [charity_id], err => {
+            if (err) return res.send("Error removing previous admin");
+
+            // Assign new admin
+            const assignAdmin = `
+                UPDATE users
+                SET charity_id = ?
+                WHERE user_id = ?
+                AND role = 'charity_admin'
+            `;
+
+            db.query(assignAdmin, [charity_id, user_id], err => {
+                if (err) return res.send("Assignment failed");
+
+                res.redirect('/admin/charity-centres');
+            });
+        });
+    }
+);
+
+app.post('/admin/charity-centres/remove-admin',
+    requireLogin,
+    requireSystemAdmin,
+    (req, res) => {
+
+        const { charity_id } = req.body;
+
+        if (!charity_id) {
+            return res.send("Invalid request");
+        }
+
+        const removeSQL = `
+            UPDATE users
+            SET charity_id = NULL
+            WHERE charity_id = ?
+            AND role = 'charity_admin'
+        `;
+
+        db.query(removeSQL, [charity_id], (err) => {
+            if (err) {
+                console.error(err);
+                return res.send("Failed to remove admin");
+            }
+
+            res.redirect('/admin/charity-centres');
+        });
     }
 );
 

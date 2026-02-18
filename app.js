@@ -421,7 +421,7 @@ app.post('/admin/charitydashboard/:id/approve',
                     // Update clothing item status
                     const updateItemSQL = `
                         UPDATE clothing_items
-                        SET status = 'approved'
+                        SET status = 'reserved'
                         WHERE item_id = ?
                     `;
 

@@ -39,7 +39,7 @@
                             Category: <%= item.category %><br>
                             Size: <%= item.size || 'N/A' %><br>
                             Condition: <%= item.condition_desc %><br>
-                            <% if (user && (user.role === 'sys_admin' || user.role === 'charity_admin')) { %>
+                            <% if (user && (user.role === 'sys_admin')) { %>
                                 <small class="text-muted">
                                     Charity ID: <%= item.charity_id %>
                                 </small>

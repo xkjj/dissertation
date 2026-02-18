@@ -109,13 +109,19 @@ app.post('/', (req, res) => {
             req.session.user = {
                 user_id: user.user_id,
                 username: user.username,
-                role: user.role
+                role: user.role,
+                charity_id: user.charity_id
             };
 
             //redirect admin roles to dashboard
-            if (user.role === 'sys_admin' || user.role === 'charity_admin') {
-             return res.redirect('/admin/dashboard');
-                }           
+            if (user.role === 'sys_admin') {
+                 return res.redirect('/admin/dashboard');
+             }
+
+             if (user.role === 'charity_admin') {
+                 return res.redirect('/admin/charitydashboard');
+             }     
+
             res.redirect('/homepage');
         });
     });
@@ -216,7 +222,7 @@ app.get("/usercreated", (req, res) => {
 //Admin dashboard
 app.get('/admin/dashboard',
     requireLogin,
-    requireRole('sys_admin', 'charity_admin'), //required roles to gain access
+    requireSystemAdmin, //required roles to gain access
     (req, res) => {
 
         //query to list all users with accounts
@@ -242,7 +248,7 @@ app.get('/admin/dashboard',
 //update user role
 app.post('/admin/update-role',
     requireLogin,
-    requireRole('sys_admin', 'charity_admin'),
+    requireSystemAdmin,
     (req, res) => {
 
         const { user_id, role } = req.body;
@@ -285,7 +291,7 @@ app.post('/admin/update-role',
 //disable accounts in dashboard
 app.post('/admin/toggle-user',
     requireLogin,
-    requireRole('sys_admin', 'charity_admin'),
+    requireSystemAdmin,
     (req, res) => {
 
         const { user_id } = req.body;
@@ -315,6 +321,166 @@ app.post('/admin/toggle-user',
 
     }
 );
+
+app.get('/admin/charitydashboard',
+    requireLogin,
+    requireRole('sys_admin', 'charity_admin'),
+    (req, res) => {
+
+        const charityId = req.session.user.charity_id;
+
+        if (!charityId) {
+            return res.send("No charity assigned");
+        }
+
+        const itemsSQL = `
+            SELECT *
+            FROM clothing_items
+            WHERE charity_id = ?
+        `;
+
+        const requestsSQL = `
+            SELECT 
+                ir.request_id,
+                ir.status,
+                ir.requested_at,
+                ci.title,
+                u.username AS requester
+            FROM item_requests ir
+            JOIN clothing_items ci ON ir.item_id = ci.item_id
+            JOIN users u ON ir.requester_id = u.user_id
+            WHERE ci.charity_id = ?
+        `;
+
+        db.query(itemsSQL, [charityId], (err, items) => {
+            if (err) {
+                console.error(err);
+                return res.send("Error loading items");
+            }
+
+            db.query(requestsSQL, [charityId], (err, requests) => {
+                if (err) {
+                    console.error(err);
+                    return res.send("Error loading requests");
+                }
+
+                res.render('admin/charitydashboard', {
+                    items,
+                    requests
+                });
+            });
+        });
+    }
+);
+
+app.post('/admin/charitydashboard/:id/approve',
+    requireLogin,
+    requireRole('sys_admin', 'charity_admin'),
+    (req, res) => {
+
+        const requestId = req.params.id;
+        const charityId = req.session.user.charity_id;
+
+        const getRequestSQL = `
+            SELECT ir.item_id
+            FROM item_requests ir
+            JOIN clothing_items ci ON ir.item_id = ci.item_id
+            WHERE ir.request_id = ?
+            AND ci.charity_id = ?
+        `;
+
+        db.query(getRequestSQL, [requestId, charityId], (err, result) => {
+
+            if (err || result.length === 0)
+                return res.send("Invalid request");
+
+            const itemId = result[0].item_id;
+
+            // Approve selected request
+            const approveSQL = `
+                UPDATE item_requests
+                SET status = 'approved'
+                WHERE request_id = ?
+            `;
+
+            db.query(approveSQL, [requestId], err => {
+                if (err) return res.send("Approval failed");
+
+                // Reject all other pending requests for same item
+                const rejectOthersSQL = `
+                    UPDATE item_requests
+                    SET status = 'rejected'
+                    WHERE item_id = ?
+                    AND request_id != ?
+                    AND status = 'pending'
+                `;
+
+                db.query(rejectOthersSQL, [itemId, requestId], err => {
+                    if (err) return res.send("Failed to reject other requests");
+
+                    // Update clothing item status
+                    const updateItemSQL = `
+                        UPDATE clothing_items
+                        SET status = 'approved'
+                        WHERE item_id = ?
+                    `;
+
+                    db.query(updateItemSQL, [itemId], err => {
+                        if (err) return res.send("Item update failed");
+
+                        res.redirect('/admin/charitydashboard');
+                    });
+                });
+            });
+        });
+    }
+);
+
+
+app.post('/admin/charitydashboard/:id/reject',
+    requireLogin,
+    requireRole('sys_admin', 'charity_admin'),
+    (req, res) => {
+
+        const requestId = req.params.id;
+
+        const getRequestSQL = `
+            SELECT item_id
+            FROM item_requests
+            WHERE request_id = ?
+        `;
+
+        db.query(getRequestSQL, [requestId], (err, result) => {
+            if (err || result.length === 0)
+                return res.send("Request not found");
+
+            const itemId = result[0].item_id;
+
+            const rejectRequestSQL = `
+                UPDATE item_requests
+                SET status = 'rejected'
+                WHERE request_id = ?
+            `;
+
+            db.query(rejectRequestSQL, [requestId], err => {
+                if (err) return res.send("Rejection failed");
+
+                const updateItemSQL = `
+                    UPDATE clothing_items
+                    SET status = 'available'
+                    WHERE item_id = ?
+                `;
+
+                db.query(updateItemSQL, [itemId], err => {
+                    if (err) return res.send("Item update failed");
+
+                    res.redirect('/admin/charitydashboard');
+                });
+            });
+        });
+    }
+);
+
 
 //List all available items uploaded by other users
 app.get('/items', (req, res) => {

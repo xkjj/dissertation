@@ -7,6 +7,7 @@ const cookieParser = require('cookie-parser');
 const hour = 1000 * 60 * 60;
 const bcrypt = require('bcrypt');
 const SALT_ROUNDS = 10;
+const redirectByRole = require('./services/roleRedirect');
 
 //middleware
 app.set('view engine', 'ejs');
@@ -74,7 +75,10 @@ function requireSystemAdmin(req, res, next) {
 
 
 //routes - render login page on startup
-app.get("/", (req, res) => {
+app.get('/', (req, res) => {
+    if (req.session.user) {
+        return redirectByRole(req.session.user, res);
+    }
 
     res.render('login');
 });
@@ -117,16 +121,9 @@ app.post('/', (req, res) => {
                 role: user.role,
             };
 
-            //redirect admin roles to dashboard
-            if (user.role === 'sys_admin') {
-                 return res.redirect('/admin/dashboard');
-             }
+            // Role-based redirect
+            redirectByRole(user, res);
 
-             if (user.role === 'charity_admin') {
-                 return res.redirect('/admin/charitydashboard');
-             }     
-
-            res.redirect('/homepage');
         });
     });
 });
@@ -142,10 +139,17 @@ app.post('/createaccount', (req, res) => {
         surname_field,
         username_field,
         password_field,
+        role_field,
         phone_field,
         address_field,
         postcode_field
     } = req.body;
+
+    const role = role_field;
+
+    if (!['donor', 'recipient'].includes(role)) {
+        return res.send("Invalid account type");
+    }
 
     //Basic presence check
     if (
@@ -199,7 +203,7 @@ app.post('/createaccount', (req, res) => {
             surname_field,
             username_field,
             hashedPassword,  
-            'user',
+            role,
             phone_field,
             address_field,
             postcode_field

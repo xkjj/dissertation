@@ -51,6 +51,14 @@
                 <input type="password" class="form-control" name="password_field" minlength="8" placeholder="Enter password" title="Password must be at least 8 characters" required>
             </div>
             <div class="mb-3">
+                <label for="formGroupExampleInput4" class="form-label">Account Type</label>
+                <select class="form-select" name="role_field" required>
+                  <option value="">Select account type</option>
+                  <option value="donor">Donor - Donate clothing</option>
+                  <option value="recipient">Recipient - Request clothing</option>
+                </select>
+            </div>
+            <div class="mb-3">
                 <label for="formGroupExampleInput4" class="form-label">Phone</label>
                 <input type="tel" class="form-control" name="phone_field" placeholder="Enter phone number" pattern="^(\+44\s?7\d{3}|\(?07\d{3}\)?)\s?\d{3}\s?\d{3}$" title="Enter a valid UK mobile number" required>
             </div>

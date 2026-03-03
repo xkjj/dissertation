@@ -8,6 +8,14 @@ const hour = 1000 * 60 * 60;
 const bcrypt = require('bcrypt');
 const SALT_ROUNDS = 10;
 const redirectByRole = require('./services/roleRedirect');
+const {
+    ITEM_STATUS,
+    canTransition,
+    canEditItem,
+    canChangeStatus,
+    determineInitialStatus,
+    determineStatusAfterEdit,
+} = require('./services/itemStateService');
 
 //middleware
 app.set('view engine', 'ejs');
@@ -635,10 +643,12 @@ app.post('/items',
             charity_id
         } = req.body;
 
+        const assignment = determineInitialStatus(charity_id);
+
         const insertItemSQL = `
             INSERT INTO clothing_items
-            (user_id, title, description, category, size, condition_desc, charity_id)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            (user_id, title, description, category, size, condition_desc, status, charity_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         `;
 
         db.query(
@@ -650,7 +660,8 @@ app.post('/items',
                 category,
                 size,
                 condition_desc,
-                charity_id
+                assignment.status,
+                assignment.charity_id
             ],
             err => {
                 if (err) {
@@ -686,6 +697,72 @@ app.get('/items/my',
             } 
             res.render('items/my', { items });
         });
+    }
+);
+
+app.get('/items/unassigned',
+    requireLogin,
+    (req, res) => {
+
+        const sql = `
+            SELECT *
+            FROM clothing_items
+            WHERE user_id = ?
+            AND status = 'unassigned'
+        `;
+
+        db.query(sql, [req.session.user.user_id], (err, items) => {
+            if (err) return res.send("Error loading items");
+
+            res.render('items/unassigned', { items });
+        });
+    }
+);
+
+app.post('/items/:id/assign',
+    requireLogin,
+    (req, res) => {
+
+        const itemId = req.params.id;
+        const { charity_id } = req.body;
+
+        if (!charity_id) {
+            return res.send("Charity required");
+        }
+
+        db.query(
+            "SELECT status FROM clothing_items WHERE item_id = ? AND user_id = ?",
+            [itemId, req.session.user.user_id],
+            (err, rows) => {
+
+                if (err || rows.length === 0)
+                    return res.send("Item not found");
+
+                const currentStatus = rows[0].status;
+
+                // Only allow assignment from valid states
+                if (
+                    currentStatus !== ITEM_STATUS.UNASSIGNED &&
+                    currentStatus !== ITEM_STATUS.REJECTED
+                ) {
+                    return res.send("Cannot assign charity in current state");
+                }
+
+                db.query(
+                    `
+                    UPDATE clothing_items
+                    SET charity_id = ?, status = ?
+                    WHERE item_id = ?
+                    `,
+                    [charity_id, ITEM_STATUS.ASSIGNED, itemId],
+                    err => {
+                        if (err) return res.send("Update failed");
+
+                        res.redirect('/items/my');
+                    }
+                );
+            }
+        );
     }
 );
 
@@ -730,23 +807,68 @@ app.post('/items/:id',
     requireLogin,
     (req, res) => {
 
-        const { title, description, category, size, condition_desc, charity_id } = req.body;
+        const itemId = req.params.id;
+        const userId = req.session.user.user_id;
 
-        const sql = `
-            UPDATE clothing_items
-            SET title = ?, description = ?, category = ?, size = ?, condition_desc = ?, charity_id = ?
-            WHERE item_id = ? AND user_id = ?
-        `;
+        const {
+            title,
+            description,
+            category,
+            size,
+            condition_desc,
+            charity_id
+        } = req.body;
 
         db.query(
-            sql,
-            [title, description, category, size, condition_desc, charity_id || null, req.params.id, req.session.user.user_id],
-            err => {
-                if (err) {
-                    console.error(err);
-                    return res.send("Update failed");
-                } 
-                res.redirect('/items/my');
+            `
+            SELECT status, charity_id
+            FROM clothing_items
+            WHERE item_id = ?
+            AND user_id = ?
+            `,
+            [itemId, userId],
+            (err, rows) => {
+
+                if (err || rows.length === 0)
+                    return res.send("Item not found");
+
+                const currentStatus = rows[0].status;
+                const oldCharityId = rows[0].charity_id;
+
+                // Restrict editing based on lifecycle
+                if (!canEditItem('donor', currentStatus)) {
+                    return res.send("Editing not allowed in current state");
+                }
+
+                const newStatus = determineStatusAfterEdit(
+                    currentStatus,
+                    'donor',
+                    oldCharityId,
+                    charity_id || null
+                );
+
+                db.query(
+                    `
+                    UPDATE clothing_items
+                    SET title = ?, description = ?, category = ?, size = ?, condition_desc = ?, charity_id = ?, status = ?
+                    WHERE item_id = ?
+                    `,
+                    [
+                        title,
+                        description,
+                        category,
+                        size,
+                        condition_desc,
+                        charity_id || null,
+                        newStatus,
+                        itemId
+                    ],
+                    err => {
+                        if (err) return res.send("Update failed");
+
+                        res.redirect('/items/my');
+                    }
+                );
             }
         );
     }

@@ -67,8 +67,8 @@
 
         <div class="mb-3">
             <label class="form-label">Assign to Charity</label>
-            <select name="charity_id" class="form-select" required>
-                <option value="">Select a charity</option>
+            <select name="charity_id" class="form-select">
+                <option value="">No Charity Assigned</option>
                 <% charities.forEach(charity => { %>
                     <option value="<%= charity.charity_id %>">
                         <%= charity.charity_name %>

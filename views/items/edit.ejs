@@ -56,7 +56,7 @@
     <div class="mb-3">
         <label class="form-label">Assign to Charity Centre</label>
             <select name="charity_id" class="form-select">
-                <option value="">-- No charity assigned --</option>
+                <option value="">No charity assigned</option>
                 <% charity_centres.forEach(charity => { %>
                     <option value="<%= charity.charity_id %>"
                         <%= item.charity_id === charity.charity_id ? 'selected' : '' %>>

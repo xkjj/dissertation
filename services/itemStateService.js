@@ -68,6 +68,15 @@ function determineStatusAfterEdit(currentStatus, role, oldCharityId, newCharityI
     }
 
     // CASE 3:
+    // Rejected → charity added again
+    if (
+        currentStatus === ITEM_STATUS.REJECTED &&
+        newId !== null
+    ) {
+        return ITEM_STATUS.ASSIGNED;
+    }
+
+    // CASE 4:
     // Approved → charity changed
     if (
         role === 'donor' &&
@@ -84,31 +93,16 @@ function canTransition(currentStatus, newStatus) {
     return transitions[currentStatus]?.includes(newStatus);
 }
 
-function canEditItem(role, status, action = 'edit') {
-
-    // Donor full edit
-    if (role === 'donor' &&
-        ['unassigned', 'assigned', 'rejected'].includes(status)) {
-        return true;
-    }
-
-    // Donor special case: approved → only charity change
-    if (role === 'donor' &&
-        status === 'approved' &&
-        action === 'change_charity') {
-        return true;
-    }
-
-    // Charity admin after item received
-    if (role === 'charity_admin' && status === 'received') {
-        return true;
-    }
-
-    return false;
+function donorCanFullyEdit(status) {
+    return [
+        ITEM_STATUS.UNASSIGNED,
+        ITEM_STATUS.ASSIGNED,
+        ITEM_STATUS.REJECTED
+    ].includes(status);
 }
 
-function canTransition(currentStatus, newStatus) {
-    return transitions[currentStatus]?.includes(newStatus);
+function donorCanChangeCharity(status) {
+    return status === ITEM_STATUS.APPROVED;
 }
 
 function canEditItem(role, status, action = 'edit') {
@@ -133,12 +127,27 @@ function canEditItem(role, status, action = 'edit') {
 
     return false;
 }
+
+function canChangeStatus(role, currentStatus, newStatus) {
+
+    const roleTransitions = {
+        donor: ['assigned', 'unassigned'],
+        charity_admin: ['approved', 'rejected', 'allocated', 'received', 'sent'],
+        recipient: ['delivered', 'never_arrived'],
+        sys_admin: Object.values(ITEM_STATUS)
+    };
+
+    return roleTransitions[role]?.includes(newStatus);
+}
+
+
 
 module.exports = {
     ITEM_STATUS,
     canTransition,
-    canEditItem,
     canChangeStatus,
+    donorCanFullyEdit,
+    donorCanChangeCharity,
     determineInitialStatus,
     determineStatusAfterEdit,
 };

@@ -12,17 +12,17 @@
 
     <div class="mb-3">
         <label class="form-label">Title</label>
-        <input class="form-control" name="title" value="<%= item.title %>" required>
+        <input class="form-control" name="title" value="<%= item.title %>" <%= donorCanFullyEdit ? '' : 'disabled' %>>
     </div>
 
     <div class="mb-3">
         <label class="form-label">Description</label>
-        <textarea class="form-control" name="description"><%= item.description %></textarea>
+        <textarea class="form-control" name="description" <%= donorCanFullyEdit ? '' : 'disabled' %>><%= item.description %> </textarea>
     </div>
 
     <div class="mb-3">
         <label class="form-label">Category</label>
-        <select class="form-select" name="category" required>
+        <select class="form-select" name="category" <%= donorCanFullyEdit ? '' : 'disabled' %>>
             <% ['Men','Women','Children','Unisex'].forEach(cat => { %>
                 <option value="<%= cat %>" <%= item.category === cat ? 'selected' : '' %>>
                     <%= cat %>
@@ -33,7 +33,7 @@
 
     <div class="mb-3">
         <label class="form-label">Size</label>
-        <select class="form-select" name="size" required>
+        <select class="form-select" name="size" <%= donorCanFullyEdit ? '' : 'disabled' %>>
             <% ['XS','S','M','L','XL','XXL'].forEach(size => { %>
                 <option value="<%= size %>" <%= item.size_desc === size ? 'selected' : '' %>>
                     <%= size %>
@@ -44,7 +44,7 @@
 
     <div class="mb-3">
         <label class="form-label">Condition</label>
-        <select class="form-select" name="condition_desc" required>
+        <select class="form-select" name="condition_desc" <%= donorCanFullyEdit ? '' : 'disabled' %>>
             <% ['New','Good','Worn'].forEach(cond => { %>
                 <option value="<%= cond %>" <%= item.condition_desc === cond ? 'selected' : '' %>>
                     <%= cond %>
@@ -55,7 +55,7 @@
 
     <div class="mb-3">
         <label class="form-label">Assign to Charity Centre</label>
-            <select name="charity_id" class="form-select">
+            <select name="charity_id" class="form-select" <%= (donorCanFullyEdit || donorCanChangeCharity) ? '' : 'disabled' %>>
                 <option value="">No charity assigned</option>
                 <% charity_centres.forEach(charity => { %>
                     <option value="<%= charity.charity_id %>"

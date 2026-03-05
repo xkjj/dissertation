@@ -30,6 +30,7 @@
 
             <p>Status: <strong><%= item.status %></strong></p>
 
+              <% if (donorCanDelete(item.status)) { %>
             <a href="/items/<%= item.item_id %>/edit" class="btn btn-sm btn-secondary">Edit</a>
 
             <form action="/items/<%= item.item_id %>/delete" method="POST" style="display:inline;">
@@ -38,6 +39,7 @@
                     Delete
                 </button>
             </form>
+            <% } %>
         </div>
     </div>
 <% }) %>

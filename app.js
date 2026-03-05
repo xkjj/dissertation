@@ -12,6 +12,8 @@ const {
     ITEM_STATUS,
     canTransition,
     canChangeStatus,
+    deleteItem,
+    donorCanDelete,
     donorCanFullyEdit,
     donorCanChangeCharity,
     determineInitialStatus,
@@ -413,6 +415,7 @@ app.get('/admin/charitydashboard',
                 SELECT *
                 FROM clothing_items
                 WHERE charity_id = ?
+                AND status != 'deleted'
             `;
 
             const requestsSQL = `
@@ -508,7 +511,7 @@ app.post('/admin/charitydashboard/:id/approve',
 
                         const updateItemSQL = `
                             UPDATE clothing_items
-                            SET status = 'reserved'
+                            SET status = 'allocated'
                             WHERE item_id = ?
                         `;
 
@@ -592,6 +595,7 @@ app.get('/items', (req, res) => {
         FROM clothing_items
         JOIN users ON clothing_items.user_id = users.user_id
         LEFT JOIN charity_centres ON clothing_items.charity_id = charity_centres.charity_id
+        WHERE clothing_items.status = 'approved'
         ORDER BY clothing_items.created_at DESC
     `;
 
@@ -688,6 +692,7 @@ app.get('/items/my',
             LEFT JOIN charity_centres
             ON clothing_items.charity_id = charity_centres.charity_id
             WHERE clothing_items.user_id = ?
+            AND clothing_items.status != 'deleted'
             ORDER BY clothing_items.created_at DESC
         `;
 
@@ -696,7 +701,10 @@ app.get('/items/my',
                 console.error(err);
                 return res.send("Error");
             } 
-            res.render('items/my', { items });
+            res.render('items/my', { 
+                items, 
+                donorCanDelete
+            });
         });
     }
 );
@@ -777,6 +785,7 @@ app.get('/items/:id/edit', requireLogin, (req, res) => {
         FROM clothing_items 
         WHERE item_id = ?
         AND user_id = ?
+        AND status != 'deleted'
     `;
 
     const charitySQL = `
@@ -805,11 +814,9 @@ app.get('/items/:id/edit', requireLogin, (req, res) => {
                 donorCanFullyEdit: donorCanFullyEdit(item.status),
                 donorCanChangeCharity: donorCanChangeCharity(item.status)
             });
-
         });
     });
 });
-
 
 //update clothing item after editing
 app.post('/items/:id',
@@ -922,23 +929,51 @@ requireRole('donor'),
 
 //delete clothing item
 app.post('/items/:id/delete',
-    requireLogin,
-    (req, res) => {
+requireLogin,
+(req, res) => {
 
-        const sql = `
-            DELETE FROM clothing_items
-            WHERE item_id = ? AND user_id = ?
+    const itemId = req.params.id;
+    const userId = req.session.user.user_id;
+
+    const sql = `
+        SELECT status
+        FROM clothing_items
+        WHERE item_id = ?
+        AND user_id = ?
+    `;
+
+    db.query(sql, [itemId, userId], (err, rows) => {
+
+        if (err || rows.length === 0) {
+            return res.send("Item not found");
+        }
+
+        const status = rows[0].status;
+
+        if (!deleteItem(status, 'donor')) {
+            return res.send("This item can no longer be deleted.");
+        }
+
+        const deleteSQL = `
+            UPDATE clothing_items
+            SET status = 'deleted'
+            WHERE item_id = ?
         `;
 
-        db.query(sql, [req.params.id, req.session.user.user_id], err => {
+        db.query(deleteSQL, [itemId], err => {
+
             if (err) {
                 console.error(err);
                 return res.send("Delete failed");
-            } 
+            }
+
             res.redirect('/items/my');
+
         });
-    }
-);
+
+    });
+
+});
 
 //admin feature for approving requests for clothing submitted by other users
 app.get('/admin/requests',
@@ -1341,6 +1376,7 @@ requireRole('charity_admin', 'sys_admin'),
             JOIN users ON clothing_items.user_id = users.user_id
             WHERE clothing_items.charity_id = ?
             AND clothing_items.status = 'assigned'
+            AND status != 'deleted'
         `;
 
         db.query(sql, [charityId], (err, items) => {

@@ -105,6 +105,32 @@ function donorCanChangeCharity(status) {
     return status === ITEM_STATUS.APPROVED;
 }
 
+function donorCanDelete(status) {
+
+    return [
+        ITEM_STATUS.UNASSIGNED,
+        ITEM_STATUS.ASSIGNED,
+        ITEM_STATUS.REJECTED,
+        ITEM_STATUS.APPROVED,
+        ITEM_STATUS.ALLOCATED
+    ].includes(status);
+
+}
+
+function deleteItem(currentStatus, role) {
+
+    if (role !== 'donor') return false;
+
+    return [
+        ITEM_STATUS.UNASSIGNED,
+        ITEM_STATUS.ASSIGNED,
+        ITEM_STATUS.REJECTED,
+        ITEM_STATUS.APPROVED,
+        ITEM_STATUS.ALLOCATED
+    ].includes(currentStatus);
+
+}
+
 function canEditItem(role, status, action = 'edit') {
 
     // Donor full edit
@@ -140,12 +166,12 @@ function canChangeStatus(role, currentStatus, newStatus) {
     return roleTransitions[role]?.includes(newStatus);
 }
 
-
-
 module.exports = {
     ITEM_STATUS,
     canTransition,
     canChangeStatus,
+    deleteItem,
+    donorCanDelete,
     donorCanFullyEdit,
     donorCanChangeCharity,
     determineInitialStatus,

@@ -11,7 +11,8 @@ const ITEM_STATUS = {
     DELIVERED: 'delivered',
     NEVER_ARRIVED: 'never_arrived',
     REJECTED: 'rejected',
-    DELETED: 'deleted'
+    DELETED: 'deleted',
+    RETURNED: 'returned'
 };
 
 const transitions = {
@@ -21,7 +22,7 @@ const transitions = {
     pending: ['approved', 'rejected'],
     approved: ['allocated', 'assigned', 'deleted'],
     allocated: ['received', 'deleted'],
-    received: ['sent'],
+    received: ['sent', 'returned'],
     sent: ['delivered', 'never_arrived'],
     delivered: [],
     never_arrived: [],
@@ -89,8 +90,15 @@ function determineStatusAfterEdit(currentStatus, role, oldCharityId, newCharityI
     return currentStatus;
 }
 
-function canTransition(currentStatus, newStatus) {
-    return transitions[currentStatus]?.includes(newStatus);
+function transitionItem(currentStatus, nextStatus) {
+
+    const allowed = transitions[currentStatus] || [];
+
+    if (!allowed.includes(nextStatus)) {
+        throw new Error(`Invalid transition: ${currentStatus} → ${nextStatus}`);
+    }
+
+    return nextStatus;
 }
 
 function donorCanFullyEdit(status) {
@@ -117,6 +125,30 @@ function donorCanDelete(status) {
 
 }
 
+function charityAdminCanEdit(status) {
+    return status === ITEM_STATUS.RECEIVED;
+}
+
+function charityAdminCanDelete(status) {
+    return status === ITEM_STATUS.RECEIVED;
+}
+
+function charityAdminCanMarkReceived(status) {
+    return status === ITEM_STATUS.ALLOCATED;
+}
+
+function charityAdminCanSend(status) {
+    return status === ITEM_STATUS.RECEIVED;
+}
+
+function charityAdminCanReturn(status) {
+    return status === ITEM_STATUS.RECEIVED;
+}
+
+function recipientCanConfirm(status) {
+    return status === ITEM_STATUS.SENT;
+}
+
 function deleteItem(currentStatus, role) {
 
     if (role !== 'donor') return false;
@@ -129,29 +161,6 @@ function deleteItem(currentStatus, role) {
         ITEM_STATUS.ALLOCATED
     ].includes(currentStatus);
 
-}
-
-function canEditItem(role, status, action = 'edit') {
-
-    // Donor full edit
-    if (role === 'donor' &&
-        ['unassigned', 'assigned', 'rejected'].includes(status)) {
-        return true;
-    }
-
-    // Donor special case: approved → only charity change
-    if (role === 'donor' &&
-        status === 'approved' &&
-        action === 'change_charity') {
-        return true;
-    }
-
-    // Charity admin after item received
-    if (role === 'charity_admin' && status === 'received') {
-        return true;
-    }
-
-    return false;
 }
 
 function canChangeStatus(role, currentStatus, newStatus) {
@@ -168,12 +177,18 @@ function canChangeStatus(role, currentStatus, newStatus) {
 
 module.exports = {
     ITEM_STATUS,
-    canTransition,
+    transitionItem,
     canChangeStatus,
     deleteItem,
     donorCanDelete,
     donorCanFullyEdit,
     donorCanChangeCharity,
+    charityAdminCanEdit,
+    charityAdminCanDelete,
+    charityAdminCanMarkReceived,
+    charityAdminCanReturn,
+    charityAdminCanSend,
+    recipientCanConfirm,
     determineInitialStatus,
     determineStatusAfterEdit,
 };

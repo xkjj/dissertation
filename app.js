@@ -10,12 +10,18 @@ const SALT_ROUNDS = 10;
 const redirectByRole = require('./services/roleRedirect');
 const {
     ITEM_STATUS,
-    canTransition,
+    transitionItem,
     canChangeStatus,
     deleteItem,
     donorCanDelete,
     donorCanFullyEdit,
     donorCanChangeCharity,
+    charityAdminCanEdit,
+    charityAdminCanDelete,
+    charityAdminCanMarkReceived,
+    charityAdminCanReturn,
+    charityAdminCanSend,
+    recipientCanConfirm,
     determineInitialStatus,
     determineStatusAfterEdit,
 } = require('./services/itemStateService');
@@ -424,6 +430,7 @@ app.get('/admin/charitydashboard',
                     ir.status,
                     ir.requested_at,
                     ci.title,
+                    ci.status AS item_status,
                     u.username AS requester
                 FROM item_requests ir
                 JOIN clothing_items ci ON ir.item_id = ci.item_id
@@ -779,53 +786,117 @@ app.post('/items/:id/assign',
 app.get('/items/:id/edit', requireLogin, (req, res) => {
 
     const itemId = req.params.id;
-
-    const itemSQL = `
-        SELECT * 
-        FROM clothing_items 
-        WHERE item_id = ?
-        AND user_id = ?
-        AND status != 'deleted'
-    `;
+    const user = req.session.user;
 
     const charitySQL = `
+        SELECT charity_id
+        FROM charity_admins
+        WHERE user_id = ?
+    `;
+
+    const centresSQL = `
         SELECT charity_id, charity_name 
         FROM charity_centres
         WHERE is_active = 1
         ORDER BY charity_name
     `;
 
-    db.query(itemSQL, [itemId, req.session.user.user_id], (err, itemResults) => {
-        if (err || itemResults.length === 0) {
-            console.error(err);
-            return res.send("Item not found");
-        }
+    // 🔵 DONOR FLOW
+    if (user.role === 'donor') {
 
-        const item = itemResults[0];
+        const itemSQL = `
+            SELECT * 
+            FROM clothing_items 
+            WHERE item_id = ?
+            AND user_id = ?
+            AND status != 'deleted'
+        `;
 
-        db.query(charitySQL, (err, charityResults) => {
-            if (err) {
-                console.error(err);
-                return res.send("Error loading charity centres");
+        db.query(itemSQL, [itemId, user.user_id], (err, itemResults) => {
+
+            if (err || itemResults.length === 0) {
+                return res.send("Item not found");
             }
-            res.render('items/edit', {
-                item: item,
-                charity_centres: charityResults,
-                donorCanFullyEdit: donorCanFullyEdit(item.status),
-                donorCanChangeCharity: donorCanChangeCharity(item.status)
+
+            const item = itemResults[0];
+
+            db.query(centresSQL, (err, charityResults) => {
+
+                res.render('items/edit', {
+                    item,
+                    charity_centres: charityResults,
+                    donorCanFullyEdit: donorCanFullyEdit(item.status),
+                    donorCanChangeCharity: donorCanChangeCharity(item.status),
+                    isCharityAdmin: false,
+
+                    canFullEdit: donorCanFullyEdit(item.status)
+                });
+
             });
+
         });
-    });
+
+    }
+
+    // 🟢 CHARITY ADMIN FLOW
+    else if (user.role === 'charity_admin') {
+
+        db.query(charitySQL, [user.user_id], (err, result) => {
+
+            if (err || result.length === 0) {
+                return res.send("No charity assigned");
+            }
+
+            const charityId = result[0].charity_id;
+
+            const itemSQL = `
+                SELECT *
+                FROM clothing_items
+                WHERE item_id = ?
+                AND charity_id = ?
+                AND status = 'received'
+            `;
+
+            db.query(itemSQL, [itemId, charityId], (err, itemResults) => {
+
+                if (err || itemResults.length === 0) {
+                    return res.send("Item not found or not editable");
+                }
+
+                const item = itemResults[0];
+
+                db.query(centresSQL, (err, charityResults) => {
+
+                    res.render('items/edit', {
+                        item,
+                        charity_centres: charityResults,
+                        donorCanFullyEdit: false,
+                        donorCanChangeCharity: false,
+                        isCharityAdmin: true,
+                        canFullEdit: item.status === 'received'
+                    });
+
+                });
+
+            });
+
+        });
+
+    }
+
+    else {
+        return res.send("Unauthorized");
+    }
+
 });
 
 //update clothing item after editing
 app.post('/items/:id',
 requireLogin,
-requireRole('donor'),
 (req, res) => {
 
     const itemId = req.params.id;
-    const userId = req.session.user.user_id;
+    const user = req.session.user;
 
     const {
         title,
@@ -836,95 +907,168 @@ requireRole('donor'),
         charity_id
     } = req.body;
 
-    db.query(
-        `
-        SELECT status, charity_id
-        FROM clothing_items
-        WHERE item_id = ?
-        AND user_id = ?
-        `,
-        [itemId, userId],
-        (err, rows) => {
+    // 🔵 DONOR FLOW
+    if (user.role === 'donor') {
 
-            if (err || rows.length === 0)
-                return res.send("Item not found");
+        const userId = user.user_id;
 
-            const currentStatus = rows[0].status;
-            const oldCharityId = rows[0].charity_id;
-            const newCharityId = charity_id || null;
+        db.query(
+            `
+            SELECT status, charity_id
+            FROM clothing_items
+            WHERE item_id = ?
+            AND user_id = ?
+            `,
+            [itemId, userId],
+            (err, rows) => {
 
-            const newStatus = determineStatusAfterEdit(
-                currentStatus,
-                'donor',
-                oldCharityId,
-                newCharityId
-            );
+                if (err || rows.length === 0)
+                    return res.send("Item not found");
 
-            let updateSQL;
-            let params;
+                const currentStatus = rows[0].status;
+                const oldCharityId = rows[0].charity_id;
+                const newCharityId = charity_id || null;
 
-            // FULL EDIT PERMITTED
-            if (donorCanFullyEdit(currentStatus)) {
+                const newStatus = determineStatusAfterEdit(
+                    currentStatus,
+                    'donor',
+                    oldCharityId,
+                    newCharityId
+                );
 
-                updateSQL = `
-                    UPDATE clothing_items
-                    SET
-                        title = ?,
-                        description = ?,
-                        category = ?,
-                        size = ?,
-                        condition_desc = ?,
-                        charity_id = ?,
-                        status = ?
-                    WHERE item_id = ?
-                `;
+                let updateSQL;
+                let params;
 
-                params = [
-                    title,
-                    description,
-                    category,
-                    size,
-                    condition_desc,
-                    newCharityId,
-                    newStatus,
-                    itemId
-                ];
-            }
+                if (donorCanFullyEdit(currentStatus)) {
 
-            // ONLY CHARITY CHANGE ALLOWED
-            else if (donorCanChangeCharity(currentStatus)) {
+                    updateSQL = `
+                        UPDATE clothing_items
+                        SET
+                            title = ?,
+                            description = ?,
+                            category = ?,
+                            size = ?,
+                            condition_desc = ?,
+                            charity_id = ?,
+                            status = ?
+                        WHERE item_id = ?
+                    `;
 
-                updateSQL = `
-                    UPDATE clothing_items
-                    SET charity_id = ?, status = ?
-                    WHERE item_id = ?
-                `;
-
-                params = [
-                    newCharityId,
-                    newStatus,
-                    itemId
-                ];
-            }
-
-            // EDIT BLOCKED
-            else {
-                return res.send("This item can no longer be edited.");
-            }
-
-            db.query(updateSQL, params, err => {
-
-                if (err) {
-                    console.error(err);
-                    return res.send("Update failed");
+                    params = [
+                        title,
+                        description,
+                        category,
+                        size,
+                        condition_desc,
+                        newCharityId,
+                        newStatus,
+                        itemId
+                    ];
                 }
 
-                res.redirect('/items/my');
+                else if (donorCanChangeCharity(currentStatus)) {
 
-            });
+                    updateSQL = `
+                        UPDATE clothing_items
+                        SET charity_id = ?, status = ?
+                        WHERE item_id = ?
+                    `;
 
-        }
-    );
+                    params = [
+                        newCharityId,
+                        newStatus,
+                        itemId
+                    ];
+                }
+
+                else {
+                    return res.send("This item can no longer be edited.");
+                }
+
+                db.query(updateSQL, params, err => {
+                    if (err) return res.send("Update failed");
+                    res.redirect('/items/my');
+                });
+
+            }
+        );
+    }
+
+    // 🟢 CHARITY ADMIN FLOW
+    else if (user.role === 'charity_admin') {
+
+        const charitySQL = `
+            SELECT charity_id
+            FROM charity_admins
+            WHERE user_id = ?
+        `;
+
+        db.query(charitySQL, [user.user_id], (err, result) => {
+
+            if (err || result.length === 0) {
+                return res.send("No charity assigned");
+            }
+
+            const charityId = result[0].charity_id;
+
+            db.query(
+                `
+                SELECT status
+                FROM clothing_items
+                WHERE item_id = ?
+                AND charity_id = ?
+                `,
+                [itemId, charityId],
+                (err, rows) => {
+
+                    if (err || rows.length === 0)
+                        return res.send("Item not found");
+
+                    const currentStatus = rows[0].status;
+
+                    if (currentStatus !== 'received') {
+                        return res.send("Not allowed");
+                    }
+
+                    db.query(
+                        `
+                        UPDATE clothing_items
+                        SET
+                            title = ?,
+                            description = ?,
+                            category = ?,
+                            size = ?,
+                            condition_desc = ?
+                        WHERE item_id = ?
+                        `,
+                        [
+                            title,
+                            description,
+                            category,
+                            size,
+                            condition_desc,
+                            itemId
+                        ],
+                        err => {
+
+                            if (err) return res.send("Update failed");
+
+                            res.redirect('/admin/incoming-items');
+
+                        }
+                    );
+
+                }
+            );
+
+        });
+
+    }
+
+    else {
+        return res.send("Unauthorized");
+    }
+
 });
 
 //delete clothing item
@@ -1092,12 +1236,15 @@ app.get('/requests/my',
     (req, res) => {
 
         const sql = `
-            SELECT
+            SELECT 
+                item_requests.request_id,
                 clothing_items.title,
-                item_requests.status
+                item_requests.status,
+                clothing_items.status AS item_status
             FROM item_requests
-            JOIN clothing_items ON item_requests.item_id = clothing_items.item_id
-            WHERE requester_id = ?
+            JOIN clothing_items 
+                ON item_requests.item_id = clothing_items.item_id
+            WHERE item_requests.requester_id = ?
         `;
 
         db.query(sql, [req.session.user.user_id], (err, requests) => {
@@ -1479,6 +1626,268 @@ requireRole('charity_admin'),
             res.redirect('/admin/charity-items');
 
         });
+
+    });
+
+});
+
+app.get('/admin/incoming-items',
+requireLogin,
+requireRole('charity_admin'),
+(req, res) => {
+
+    const userId = req.session.user.user_id;
+
+    // Get charity_id for this admin
+    const charitySQL = `
+        SELECT charity_id
+        FROM charity_admins
+        WHERE user_id = ?
+    `;
+
+    db.query(charitySQL, [userId], (err, result) => {
+
+        if (err || result.length === 0 || !result[0].charity_id) {
+            return res.send("No charity assigned");
+        }
+
+        const charityId = result[0].charity_id;
+
+        const itemsSQL = `
+            SELECT
+                clothing_items.*,
+                users.username AS donor
+            FROM clothing_items
+            JOIN users ON clothing_items.user_id = users.user_id
+            WHERE clothing_items.charity_id = ?
+            AND clothing_items.status = 'allocated'
+            ORDER BY clothing_items.created_at DESC
+        `;
+
+        db.query(itemsSQL, [charityId], (err, items) => {
+
+            if (err) {
+                console.error(err);
+                return res.send("Error loading items");
+            }
+
+            res.render('admin/incoming_items', { items });
+
+        });
+
+    });
+
+});
+
+//charity marks item as received
+app.post('/admin/items/:id/received',
+requireLogin,
+requireRole('charity_admin'),
+(req, res) => {
+
+    const itemId = req.params.id;
+
+    db.query(
+        `SELECT status FROM clothing_items WHERE item_id = ?`,
+        [itemId],
+        (err, result) => {
+
+            if (err || result.length === 0)
+                return res.send("Item not found");
+
+            const currentStatus = result[0].status;
+
+            if (!charityAdminCanMarkReceived(currentStatus)) {
+                return res.send("Not allowed");
+            }
+
+            const newStatus = transitionItem(currentStatus, 'received');
+
+            db.query(
+                `UPDATE clothing_items SET status = ? WHERE item_id = ?`,
+                [newStatus, itemId],
+                () => res.redirect('/admin/charitydashboard')
+            );
+        }
+    );
+});
+
+//charity sends item to recipient
+app.post('/admin/items/:id/send',
+requireLogin,
+requireRole('charity_admin'),
+(req, res) => {
+
+    const itemId = req.params.id;
+    const userId = req.session.user.user_id;
+
+    // Get charity_id of admin
+    const charitySQL = `
+        SELECT charity_id
+        FROM charity_admins
+        WHERE user_id = ?
+    `;
+
+    db.query(charitySQL, [userId], (err, result) => {
+
+        if (err || result.length === 0) {
+            return res.send("No charity assigned");
+        }
+
+        const charityId = result[0].charity_id;
+
+        // Validate item belongs to charity AND is received
+        const itemSQL = `
+            SELECT status
+            FROM clothing_items
+            WHERE item_id = ?
+            AND charity_id = ?
+        `;
+
+        db.query(itemSQL, [itemId, charityId], (err, rows) => {
+
+            if (err || rows.length === 0)
+                return res.send("Item not found");
+
+            const currentStatus = rows[0].status;
+
+            if (currentStatus !== 'received') {
+                return res.send("Item must be received first");
+            }
+
+            // Update status → sent
+            db.query(
+                `UPDATE clothing_items SET status = 'sent' WHERE item_id = ?`,
+                [itemId],
+                err => {
+
+                    if (err) {
+                        console.error(err);
+                        return res.send("Update failed");
+                    }
+
+                    res.redirect('/admin/charitydashboard');
+
+                }
+            );
+
+        });
+
+    });
+
+});
+
+//charity returns item
+app.post('/admin/items/:id/return',
+requireLogin,
+requireRole('charity_admin'),
+(req, res) => {
+
+    const itemId = req.params.id;
+
+    db.query(
+        `SELECT status FROM clothing_items WHERE item_id = ?`,
+        [itemId],
+        (err, result) => {
+
+            const currentStatus = result[0].status;
+
+            if (!charityAdminCanReturn(currentStatus)) {
+                return res.send("Not allowed");
+            }
+
+            const newStatus = transitionItem(currentStatus, 'returned');
+
+            db.query(
+                `UPDATE clothing_items SET status = ? WHERE item_id = ?`,
+                [newStatus, itemId],
+                () => res.redirect('/admin/charitydashboard')
+            );
+        }
+    );
+});
+
+//recipient confirms delivery
+app.post('/requests/:id/delivered',
+requireLogin,
+requireRole('recipient'),
+(req, res) => {
+
+    const requestId = req.params.id;
+    const userId = req.session.user.user_id;
+
+    const sql = `
+        SELECT ci.item_id, ci.status
+        FROM item_requests ir
+        JOIN clothing_items ci ON ir.item_id = ci.item_id
+        WHERE ir.request_id = ?
+        AND ir.requester_id = ?
+    `;
+
+    db.query(sql, [requestId, userId], (err, rows) => {
+
+        if (err || rows.length === 0)
+            return res.send("Request not found");
+
+        const { item_id, status } = rows[0];
+
+        if (status !== 'sent') {
+            return res.send("Item not sent yet");
+        }
+
+        db.query(
+            `UPDATE clothing_items SET status = 'delivered' WHERE item_id = ?`,
+            [item_id],
+            err => {
+
+                if (err) return res.send("Update failed");
+
+                res.redirect('/requests/my');
+            }
+        );
+
+    });
+
+});
+
+//recipient marks never arrived
+app.post('/requests/:id/never-arrived',
+requireLogin,
+requireRole('recipient'),
+(req, res) => {
+
+    const requestId = req.params.id;
+    const userId = req.session.user.user_id;
+
+    const sql = `
+        SELECT ci.item_id, ci.status
+        FROM item_requests ir
+        JOIN clothing_items ci ON ir.item_id = ci.item_id
+        WHERE ir.request_id = ?
+        AND ir.requester_id = ?
+    `;
+
+    db.query(sql, [requestId, userId], (err, rows) => {
+
+        if (err || rows.length === 0)
+            return res.send("Request not found");
+
+        const { item_id, status } = rows[0];
+
+        if (status !== 'sent') {
+            return res.send("Item not sent yet");
+        }
+
+        db.query(
+            `UPDATE clothing_items SET status = 'never_arrived' WHERE item_id = ?`,
+            [item_id],
+            err => {
+
+                if (err) return res.send("Update failed");
+
+                res.redirect('/requests/my');
+            }
+        );
 
     });
 

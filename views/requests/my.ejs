@@ -39,23 +39,59 @@
                         <td>
                             <%= request.title %>
                         </td>
-
                         <td>
-                            <% if (request.status === 'pending') { %>
-                                <span class="badge bg-warning">Pending</span>
 
-                            <% } else if (request.status === 'approved') { %>
-                                <span class="badge bg-success">Approved</span>
+                        <% if (request.item_status === 'sent') { %>
 
-                            <% } else if (request.status === 'rejected') { %>
-                                <span class="badge bg-danger">Rejected</span>
+                            <span class="badge bg-primary">Sent</span>
 
-                            <% } else { %>
-                                <span class="badge bg-secondary">
-                                    <%= request.status %>
-                                </span>
-                            <% } %>
-                        </td>
+                            <div class="mt-2">
+
+                                <form action="/requests/<%= request.request_id %>/delivered"
+                                    method="POST"
+                                    class="d-inline">
+
+                                    <button class="btn btn-sm btn-primary">
+                                        Mark as Delivered
+                                    </button>
+
+                                </form>
+
+                                <form action="/requests/<%= request.request_id %>/never-arrived"
+                                    method="POST"
+                                    class="d-inline ms-2">
+
+                                    <button class="btn btn-sm btn-danger">
+                                        Never Arrived
+                                    </button>
+
+                                </form>
+
+                            </div>
+
+                        <% } else if (request.item_status === 'delivered') { %>
+
+                            <span class="badge bg-primary">Delivered</span>
+
+                        <% } else if (request.item_status === 'never_arrived') { %>
+
+                            <span class="badge bg-danger">Never Arrived</span>
+
+                        <% } else if (request.status === 'approved') { %>
+
+                            <span class="badge bg-success">Approved</span>
+
+                        <% } else if (request.status === 'pending') { %>
+
+                            <span class="badge bg-warning text-dark">Pending</span>
+
+                        <% } else { %>
+
+                            <span class="badge bg-danger">Rejected</span>
+
+                        <% } %>
+
+                    </td>
                     </tr>
                 <% }) %>
             </tbody>

@@ -14,6 +14,7 @@
         <p class="lead">Manage items and requests for your charity</p>
         <a href="/homepage" class="btn btn-dark mt-3">Homepage</a>
         <a href="/admin/charity-items" class="btn btn-dark mt-3">View Donations</a>
+        <a href="/admin/incoming-items" class="btn btn-dark mt-3">View items not received</a>
     </div>
 </div>
 
@@ -36,6 +37,28 @@
                         <span class="badge bg-secondary">
                             Status: <%= item.status %>
                         </span>
+                        <% if (item.status === 'received') { %>
+
+                            <div class="mt-2">
+
+                                <a href="/items/<%= item.item_id %>/edit"
+                                class="btn btn-sm btn-secondary">
+                                    Edit
+                                </a>
+
+                                <form action="/admin/items/<%= item.item_id %>/send"
+                                    method="POST"
+                                    class="d-inline ms-2">
+
+                                    <button class="btn btn-sm btn-primary">
+                                        Mark as Sent
+                                    </button>
+
+                                </form>
+
+                            </div>
+
+                        <% } %>
                     </div>
                 </div>
             </div>

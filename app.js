@@ -4,6 +4,8 @@ const path = require('path');
 const mysql = require('mysql2');
 const sessions = require('express-session');
 const cookieParser = require('cookie-parser');
+const multer = require('multer');
+const fs = require('fs');
 const hour = 1000 * 60 * 60;
 const bcrypt = require('bcrypt');
 const SALT_ROUNDS = 10;
@@ -25,6 +27,33 @@ const {
     determineInitialStatus,
     determineStatusAfterEdit,
 } = require('./services/itemStateService');
+
+// Multer setup
+const storage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        cb(null, path.join(__dirname, 'public/uploads'));
+    },
+    filename: (req, file, cb) => {
+        const uniqueName = Date.now() + path.extname(file.originalname);
+        cb(null, uniqueName);
+    }
+});
+
+const fileFilter = (req, file, cb) => {
+    const allowedTypes = /jpeg|jpg|png|webp/;
+
+    if (allowedTypes.test(file.mimetype)) {
+        cb(null, true);
+    } else {
+        cb(new Error("Only image files allowed"), false);
+    }
+};
+
+const upload = multer({
+    storage,
+    fileFilter,
+    limits: { fileSize: 2 * 1024 * 1024 } // 2MB
+});
 
 //middleware
 app.set('view engine', 'ejs');
@@ -587,6 +616,7 @@ app.get('/items', (req, res) => {
             clothing_items.status,
             clothing_items.charity_id,
             clothing_items.user_id AS owner_id,
+            clothing_items.image,
 
             charity_centres.charity_name AS charity_name,
             users.username,
@@ -644,6 +674,7 @@ app.get('/items/new',
 //create new clothing item and insert into DB
 app.post('/items',
     requireLogin,
+    upload.single('image'),
     (req, res) => {
 
         const {
@@ -655,12 +686,13 @@ app.post('/items',
             charity_id
         } = req.body;
 
+        const image = req.file ? req.file.filename : 'placeholder.jpg';
         const assignment = determineInitialStatus(charity_id);
 
         const insertItemSQL = `
             INSERT INTO clothing_items
-            (user_id, title, description, category, size, condition_desc, status, charity_id)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            (user_id, title, description, category, size, condition_desc, status, charity_id, image)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         `;
 
         db.query(
@@ -673,7 +705,8 @@ app.post('/items',
                 size,
                 condition_desc,
                 assignment.status,
-                assignment.charity_id
+                assignment.charity_id,
+                image
             ],
             err => {
                 if (err) {
@@ -893,6 +926,7 @@ app.get('/items/:id/edit', requireLogin, (req, res) => {
 //update clothing item after editing
 app.post('/items/:id',
 requireLogin,
+upload.single('image'),
 (req, res) => {
 
     const itemId = req.params.id;
@@ -907,6 +941,8 @@ requireLogin,
         charity_id
     } = req.body;
 
+    const newImage = req.file ? req.file.filename : null;
+
     // 🔵 DONOR FLOW
     if (user.role === 'donor') {
 
@@ -914,7 +950,7 @@ requireLogin,
 
         db.query(
             `
-            SELECT status, charity_id
+            SELECT status, charity_id, image
             FROM clothing_items
             WHERE item_id = ?
             AND user_id = ?
@@ -925,6 +961,7 @@ requireLogin,
                 if (err || rows.length === 0)
                     return res.send("Item not found");
 
+                const oldImage = rows[0].image;
                 const currentStatus = rows[0].status;
                 const oldCharityId = rows[0].charity_id;
                 const newCharityId = charity_id || null;
@@ -941,6 +978,8 @@ requireLogin,
 
                 if (donorCanFullyEdit(currentStatus)) {
 
+                    const imageSQL = newImage ? 'image = ?,' : '';
+
                     updateSQL = `
                         UPDATE clothing_items
                         SET
@@ -949,6 +988,7 @@ requireLogin,
                             category = ?,
                             size = ?,
                             condition_desc = ?,
+                            ${imageSQL}
                             charity_id = ?,
                             status = ?
                         WHERE item_id = ?
@@ -960,6 +1000,7 @@ requireLogin,
                         category,
                         size,
                         condition_desc,
+                        ...(newImage ? [newImage] : []),
                         newCharityId,
                         newStatus,
                         itemId
@@ -986,10 +1027,22 @@ requireLogin,
                 }
 
                 db.query(updateSQL, params, err => {
+
                     if (err) return res.send("Update failed");
+
+                    // Delete old image if new one uploaded
+                    if (newImage && oldImage) {
+                        const oldPath = path.join(__dirname, 'public/uploads', oldImage);
+
+                        fs.unlink(oldPath, (err) => {
+                            if (err) {
+                                console.error("Failed to delete old image:", err);
+                            }
+                        });
+                    }
+
                     res.redirect('/items/my');
                 });
-
             }
         );
     }
@@ -1013,7 +1066,7 @@ requireLogin,
 
             db.query(
                 `
-                SELECT status
+                SELECT status, image
                 FROM clothing_items
                 WHERE item_id = ?
                 AND charity_id = ?
@@ -1024,11 +1077,14 @@ requireLogin,
                     if (err || rows.length === 0)
                         return res.send("Item not found");
 
+                    const oldImage = rows[0].image;
                     const currentStatus = rows[0].status;
 
                     if (currentStatus !== 'received') {
                         return res.send("Not allowed");
                     }
+
+                    const imageSQL = newImage ? ', image = ?' : '';
 
                     db.query(
                         `
@@ -1039,6 +1095,7 @@ requireLogin,
                             category = ?,
                             size = ?,
                             condition_desc = ?
+                            ${imageSQL}
                         WHERE item_id = ?
                         `,
                         [
@@ -1047,17 +1104,26 @@ requireLogin,
                             category,
                             size,
                             condition_desc,
+                            ...(newImage ? [newImage] : []),
                             itemId
                         ],
                         err => {
 
                             if (err) return res.send("Update failed");
+                            
+                            // Delete ONLY after successful update
+                            if (newImage && oldImage && newImage !== 'default.jpg') {
+                                const oldPath = path.join(__dirname, 'public/uploads', oldImage);
 
+                                fs.unlink(oldPath, (err) => {
+                                    if (err) {
+                                        console.error("Failed to delete old image:", err);
+                                    }
+                                });
+                            }
                             res.redirect('/admin/incoming-items');
-
                         }
                     );
-
                 }
             );
 

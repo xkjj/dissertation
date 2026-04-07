@@ -27,68 +27,80 @@
     <div class="row">
         <% items.forEach(item => { %>
             <div class="col-md-4 mb-4">
-                <div class="card h-100">
-                    <div class="card-body">
+                <div class="card h-100 shadow-sm">
+
+                    <!-- IMAGE -->
+                    <img src="/uploads/<%= item.image ? item.image : 'default.jpg' %>" 
+                    class="card-img-top"
+                    style="height:200px; object-fit:cover;">
+
+                    <div class="card-body d-flex flex-column">
+
                         <h5 class="card-title"><%= item.title %></h5>
 
                         <p class="card-text">
                             <%= item.description || 'No description provided.' %>
                         </p>
 
-                        <p class="text-muted mb-1">
-                            Category: <%= item.category %><br>
-                            Size: <%= item.size || 'N/A' %><br>
-                            Condition: <%= item.condition_desc %><br>
+                        <p class="text-muted mb-2">
+                            <strong>Category:</strong> <%= item.category %><br>
+                            <strong>Size:</strong> <%= item.size || 'N/A' %><br>
+                            <strong>Condition:</strong> <%= item.condition_desc %><br>
+
                             <% if (user && (user.role === 'sys_admin')) { %>
-                                <small class="text-muted">
-                                    Charity ID: <%= item.charity_id %>
-                                </small>
+                                <small>Charity ID: <%= item.charity_id %></small><br>
                             <% } %>
-                            Charity: <%= item.charity_name ? item.charity_name : 'Not assigned' %>
+
+                            <strong>Charity:</strong> <%= item.charity_name ? item.charity_name : 'Not assigned' %>
                         </p>
 
-                        <% if (user) { %>
+                        <!-- Push buttons to bottom -->
+                        <div class="mt-auto">
 
-                            <% if (item.status !== 'approved') { %>
-                                <button class="btn btn-sm btn-secondary mt-2" disabled>
-                                    Unavailable
-                                </button>
+                            <% if (user) { %>
 
-                            <% } else if (user.user_id === item.owner_id) { %>
-                                <button class="btn btn-sm btn-info mt-2" disabled>
-                                    Your Item
-                                </button>
-
-                            <% } else if (item.request_status === 'approved') { %>
-                                <button class="btn btn-sm btn-outline-success mt-2" disabled>
-                                    Approved
-                                </button>
-
-                            <% } else if (item.request_status === 'pending') { %>
-                                <button class="btn btn-sm btn-outline-warning mt-2" disabled>
-                                    Request Pending
-                                </button>   
-
-                             <% } else if (item.request_status === 'rejected') { %>
-                                <button class="btn btn-sm btn-outline-danger mt-2" disabled>
-                                    Rejected
-                                </button>   
-
-                            <% } else { %>
-                                <form action="/requests" method="POST" class="mt-2">
-                                    <input type="hidden" name="item_id" value="<%= item.item_id %>">
-                                    <button class="btn btn-sm btn-dark">
-                                        Request Item
+                                <% if (item.status !== 'approved') { %>
+                                    <button class="btn btn-sm btn-secondary w-100" disabled>
+                                        Unavailable
                                     </button>
-                                </form>
+
+                                <% } else if (user.user_id === item.owner_id) { %>
+                                    <button class="btn btn-sm btn-info w-100" disabled>
+                                        Your Item
+                                    </button>
+
+                                <% } else if (item.request_status === 'approved') { %>
+                                    <button class="btn btn-sm btn-outline-success w-100" disabled>
+                                        Approved
+                                    </button>
+
+                                <% } else if (item.request_status === 'pending') { %>
+                                    <button class="btn btn-sm btn-outline-warning w-100" disabled>
+                                        Request Pending
+                                    </button>
+
+                                <% } else if (item.request_status === 'rejected') { %>
+                                    <button class="btn btn-sm btn-outline-danger w-100" disabled>
+                                        Rejected
+                                    </button>
+
+                                <% } else { %>
+                                    <form action="/requests" method="POST">
+                                        <input type="hidden" name="item_id" value="<%= item.item_id %>">
+                                        <button class="btn btn-sm btn-dark w-100">
+                                            Request Item
+                                        </button>
+                                    </form>
+                                <% } %>
+
                             <% } %>
 
-                        <% } %>
+                        </div>
 
-
-                        <small class="text-muted">
+                        <small class="text-muted mt-2">
                             Donated by: <%= item.username %>
                         </small>
+
                     </div>
                 </div>
             </div>

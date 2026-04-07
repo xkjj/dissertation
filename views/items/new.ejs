@@ -79,7 +79,10 @@
 
         <div class="mb-3">
             <label class="form-label">Item Image</label>
-            <input type="file" name="image" class="form-control" onchange="previewImage(event)">
+            <input type="file" name="images" class="form-control" multiple onchange="previewImage(event)">
+
+            <div id="previewContainer" class="d-flex flex-wrap mt-2"></div>
+            <small id="imageCount" class="text-muted"></small>
 
             <!-- Preview image -->
             <img id="preview" style="max-width:150px; margin-top:10px; display:none;">
@@ -92,14 +95,22 @@
 </div>
 
 <script>
-function previewImage(event) {
-    const file = event.target.files[0];
-    const preview = document.getElementById('preview');
+function previewImages(event) {
+    const files = event.target.files;
+    const container = document.getElementById('previewContainer');
 
-    if (file) {
-        preview.src = URL.createObjectURL(file);
-        preview.style.display = 'block';
-    }
+    container.innerHTML = ''; // clear previous previews
+
+    Array.from(files).forEach(file => {
+        const img = document.createElement('img');
+        img.src = URL.createObjectURL(file);
+        img.style.width = '100px';
+        img.style.height = '100px';
+        img.style.objectFit = 'cover';
+        img.classList.add('me-2', 'mb-2', 'rounded');
+
+        container.appendChild(img);
+    });
 }
 </script>
 </body>

@@ -28,3 +28,13 @@
     transform: scale(1.02);
     transition: 0.2s ease;
 }
+
+.carousel-item img {
+    max-height: 500px;
+    object-fit: contain;
+}
+
+img:hover {
+    transform: scale(1.05);
+    transition: 0.2s;
+}

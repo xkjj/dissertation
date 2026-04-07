@@ -642,7 +642,36 @@ app.get('/items', (req, res) => {
             return res.send("Error loading items");
         }
 
-        res.render('items/index', { items });
+        // Get all images
+        const imageSQL = `
+            SELECT item_id, filename
+            FROM item_images
+        `;
+
+        db.query(imageSQL, (err, images) => {
+
+            if (err) {
+                console.error(err);
+                return res.send("Error loading images");
+            }
+
+            // Map images to items
+            const imageMap = {};
+
+            images.forEach(img => {
+                if (!imageMap[img.item_id]) {
+                    imageMap[img.item_id] = [];
+                }
+                imageMap[img.item_id].push(img.filename);
+            });
+
+            // Attach images array to each item
+            items.forEach(item => {
+                item.images = imageMap[item.item_id] || [];
+            });
+
+            res.render('items/index', { items });
+        });
     });
 });
 
@@ -674,7 +703,7 @@ app.get('/items/new',
 //create new clothing item and insert into DB
 app.post('/items',
     requireLogin,
-    upload.single('image'),
+    upload.array('images', 5),
     (req, res) => {
 
         const {
@@ -686,13 +715,19 @@ app.post('/items',
             charity_id
         } = req.body;
 
-        const image = req.file ? req.file.filename : 'placeholder.jpg';
+        const images = req.files || [];
+
+        // Validate
+        if (images.length > 5) {
+            return res.send("Maximum 5 images allowed");
+        }
+
         const assignment = determineInitialStatus(charity_id);
 
         const insertItemSQL = `
             INSERT INTO clothing_items
-            (user_id, title, description, category, size, condition_desc, status, charity_id, image)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            (user_id, title, description, category, size, condition_desc, status, charity_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         `;
 
         db.query(
@@ -705,15 +740,37 @@ app.post('/items',
                 size,
                 condition_desc,
                 assignment.status,
-                assignment.charity_id,
-                image
+                assignment.charity_id
             ],
-            err => {
+            (err, result) => {
+
                 if (err) {
                     console.error(err);
                     return res.send("Failed to create item");
                 }
-                res.redirect('/items/my');
+
+                const itemId = result.insertId;
+
+                if (images.length > 0) {
+
+                    const values = images.map(file => [itemId, file.filename]);
+
+                    db.query(
+                        'INSERT INTO item_images (item_id, filename) VALUES ?',
+                        [values],
+                        err => {
+                            if (err) {
+                                console.error("Image insert failed:", err);
+                                return res.send("Image upload failed");
+                            }
+
+                            res.redirect('/items/my');
+                        }
+                    );
+
+                } else {
+                    res.redirect('/items/my');
+                }
             }
         );
     }
@@ -737,15 +794,37 @@ app.get('/items/my',
         `;
 
         db.query(sql, [req.session.user.user_id], (err, items) => {
-            if (err){
-                console.error(err);
-                return res.send("Error");
-            } 
+        if (err){
+            console.error(err);
+            return res.send("Error");
+        }
+
+        const imageSQL = `
+            SELECT item_id, filename
+            FROM item_images
+        `;
+
+        db.query(imageSQL, (err, images) => {
+
+            const imageMap = {};
+
+            images.forEach(img => {
+                if (!imageMap[img.item_id]) {
+                    imageMap[img.item_id] = [];
+                }
+                imageMap[img.item_id].push(img.filename);
+            });
+
+            items.forEach(item => {
+                item.images = imageMap[item.item_id] || [];
+            });
+
             res.render('items/my', { 
                 items, 
                 donorCanDelete
             });
         });
+    });
     }
 );
 
@@ -853,22 +932,41 @@ app.get('/items/:id/edit', requireLogin, (req, res) => {
 
             const item = itemResults[0];
 
-            db.query(centresSQL, (err, charityResults) => {
+            const imageSQL = `
+            SELECT filename
+            FROM item_images
+            WHERE item_id = ?
+            `;
 
-                res.render('items/edit', {
-                    item,
-                    charity_centres: charityResults,
-                    donorCanFullyEdit: donorCanFullyEdit(item.status),
-                    donorCanChangeCharity: donorCanChangeCharity(item.status),
-                    isCharityAdmin: false,
+            db.query(imageSQL, [itemId], (err, images) => {
 
-                    canFullEdit: donorCanFullyEdit(item.status)
+                if (err) {
+                    console.error(err);
+                    return res.send("Error loading images");
+                }
+
+                item.images = images.map(img => img.filename);
+
+                db.query(centresSQL, (err, charityResults) => {
+
+                    if (err) {
+                        console.error(err);
+                        return res.send("Error loading charities");
+                    }
+
+                    res.render('items/edit', {
+                        item,
+                        charity_centres: charityResults,
+                        donorCanFullyEdit: donorCanFullyEdit(item.status),
+                        donorCanChangeCharity: donorCanChangeCharity(item.status),
+                        isCharityAdmin: false,
+                        canFullEdit: donorCanFullyEdit(item.status)
+                    });
+
                 });
 
             });
-
         });
-
     }
 
     // 🟢 CHARITY ADMIN FLOW
@@ -898,23 +996,36 @@ app.get('/items/:id/edit', requireLogin, (req, res) => {
 
                 const item = itemResults[0];
 
-                db.query(centresSQL, (err, charityResults) => {
+                // 🔥 FETCH IMAGES
+                const imageSQL = `
+                    SELECT filename
+                    FROM item_images
+                    WHERE item_id = ?
+                `;
 
-                    res.render('items/edit', {
-                        item,
-                        charity_centres: charityResults,
-                        donorCanFullyEdit: false,
-                        donorCanChangeCharity: false,
-                        isCharityAdmin: true,
-                        canFullEdit: item.status === 'received'
+                db.query(imageSQL, [itemId], (err, images) => {
+
+                    if (err) {
+                        console.error(err);
+                        return res.send("Error loading images");
+                    }
+
+                    item.images = images.map(img => img.filename);
+
+                    db.query(centresSQL, (err, charityResults) => {
+
+                        res.render('items/edit', {
+                            item,
+                            charity_centres: charityResults,
+                            donorCanFullyEdit: false,
+                            donorCanChangeCharity: false,
+                            isCharityAdmin: true,
+                            canFullEdit: item.status === 'received'
+                        });
                     });
-
                 });
-
             });
-
         });
-
     }
 
     else {
@@ -926,7 +1037,7 @@ app.get('/items/:id/edit', requireLogin, (req, res) => {
 //update clothing item after editing
 app.post('/items/:id',
 requireLogin,
-upload.single('image'),
+upload.array('images', 5), // max 5 images
 (req, res) => {
 
     const itemId = req.params.id;
@@ -941,7 +1052,7 @@ upload.single('image'),
         charity_id
     } = req.body;
 
-    const newImage = req.file ? req.file.filename : null;
+    const newImages = req.files || [];
 
     // 🔵 DONOR FLOW
     if (user.role === 'donor') {
@@ -950,7 +1061,7 @@ upload.single('image'),
 
         db.query(
             `
-            SELECT status, charity_id, image
+            SELECT status, charity_id
             FROM clothing_items
             WHERE item_id = ?
             AND user_id = ?
@@ -961,7 +1072,6 @@ upload.single('image'),
                 if (err || rows.length === 0)
                     return res.send("Item not found");
 
-                const oldImage = rows[0].image;
                 const currentStatus = rows[0].status;
                 const oldCharityId = rows[0].charity_id;
                 const newCharityId = charity_id || null;
@@ -978,8 +1088,6 @@ upload.single('image'),
 
                 if (donorCanFullyEdit(currentStatus)) {
 
-                    const imageSQL = newImage ? 'image = ?,' : '';
-
                     updateSQL = `
                         UPDATE clothing_items
                         SET
@@ -988,7 +1096,6 @@ upload.single('image'),
                             category = ?,
                             size = ?,
                             condition_desc = ?,
-                            ${imageSQL}
                             charity_id = ?,
                             status = ?
                         WHERE item_id = ?
@@ -1000,7 +1107,6 @@ upload.single('image'),
                         category,
                         size,
                         condition_desc,
-                        ...(newImage ? [newImage] : []),
                         newCharityId,
                         newStatus,
                         itemId
@@ -1030,17 +1136,20 @@ upload.single('image'),
 
                     if (err) return res.send("Update failed");
 
-                    // Delete old image if new one uploaded
-                    if (newImage && oldImage) {
-                        const oldPath = path.join(__dirname, 'public/uploads', oldImage);
+                    if (newImages.length > 0) {
 
-                        fs.unlink(oldPath, (err) => {
-                            if (err) {
-                                console.error("Failed to delete old image:", err);
+                        const values = newImages.map(file => [itemId, file.filename]);
+
+                        db.query(
+                            'INSERT INTO item_images (item_id, filename) VALUES ?',
+                            [values],
+                            err => {
+                                if (err) {
+                                    console.error("Image insert failed:", err);
+                                }
                             }
-                        });
+                        );
                     }
-
                     res.redirect('/items/my');
                 });
             }
@@ -1066,7 +1175,7 @@ upload.single('image'),
 
             db.query(
                 `
-                SELECT status, image
+                SELECT status
                 FROM clothing_items
                 WHERE item_id = ?
                 AND charity_id = ?
@@ -1077,14 +1186,11 @@ upload.single('image'),
                     if (err || rows.length === 0)
                         return res.send("Item not found");
 
-                    const oldImage = rows[0].image;
                     const currentStatus = rows[0].status;
 
                     if (currentStatus !== 'received') {
                         return res.send("Not allowed");
                     }
-
-                    const imageSQL = newImage ? ', image = ?' : '';
 
                     db.query(
                         `
@@ -1095,7 +1201,6 @@ upload.single('image'),
                             category = ?,
                             size = ?,
                             condition_desc = ?
-                            ${imageSQL}
                         WHERE item_id = ?
                         `,
                         [
@@ -1104,7 +1209,6 @@ upload.single('image'),
                             category,
                             size,
                             condition_desc,
-                            ...(newImage ? [newImage] : []),
                             itemId
                         ],
                         err => {
@@ -1112,29 +1216,30 @@ upload.single('image'),
                             if (err) return res.send("Update failed");
                             
                             // Delete ONLY after successful update
-                            if (newImage && oldImage && newImage !== 'default.jpg') {
-                                const oldPath = path.join(__dirname, 'public/uploads', oldImage);
+                            if (newImages.length > 0) {
 
-                                fs.unlink(oldPath, (err) => {
-                                    if (err) {
-                                        console.error("Failed to delete old image:", err);
+                                const values = newImages.map(file => [itemId, file.filename]);
+
+                                db.query(
+                                    'INSERT INTO item_images (item_id, filename) VALUES ?',
+                                    [values],
+                                    err => {
+                                        if (err) {
+                                            console.error("Image insert failed:", err);
+                                        }
                                     }
-                                });
+                                );
                             }
                             res.redirect('/admin/incoming-items');
                         }
                     );
                 }
             );
-
         });
-
     }
-
     else {
         return res.send("Unauthorized");
     }
-
 });
 
 //delete clothing item
@@ -1182,6 +1287,59 @@ requireLogin,
         });
 
     });
+
+});
+
+//delete item image when editing
+app.post('/items/:id/images/delete',
+requireLogin,
+(req, res) => {
+
+    const itemId = req.params.id;
+    const { filename } = req.body;
+    const user = req.session.user;
+
+    // ensure user owns item
+    db.query(
+        `SELECT user_id FROM clothing_items WHERE item_id = ?`,
+        [itemId],
+        (err, rows) => {
+
+            if (err || rows.length === 0) {
+                return res.send("Item not found");
+            }
+
+            if (rows[0].user_id !== user.user_id && user.role !== 'charity_admin') {
+                return res.status(403).send("Unauthorized");
+            }
+
+            // Delete from DB
+            db.query(
+                `DELETE FROM item_images WHERE item_id = ? AND filename = ?`,
+                [itemId, filename],
+                err => {
+
+                    if (err) {
+                        console.error(err);
+                        return res.send("Failed to delete image");
+                    }
+
+                    // delete file from disk
+                    const filePath = path.join(__dirname, 'public/uploads', filename);
+
+                    fs.unlink(filePath, (err) => {
+                        if (err) {
+                            console.error("File delete error:", err);
+                        }
+
+                        res.redirect(`/items/${itemId}/edit`);
+                    });
+
+                }
+            );
+
+        }
+    );
 
 });
 

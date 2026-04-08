@@ -16,7 +16,21 @@
         <h2 class="fw-bolder display-5">Available Clothing</h2>
         <p class="lead">Browse donated clothing items</p>
     </div>
+    <form method="GET" action="/items" class="mb-4">
+    <div class="input-group">
+        <input 
+            type="text" 
+            name="search" 
+            class="form-control" 
+            placeholder="Search clothing items..."
+            value="<%= typeof search !== 'undefined' ? search : '' %>"
+        >
+        <button class="btn btn-dark">Search</button>
+    </div>
+</form>
 </div>
+
+
 
 <div class="container">
 
@@ -27,88 +41,90 @@
     <div class="row">
         <% items.forEach(item => { %>
             <div class="col-md-4 mb-4">
-                <div class="card h-100 shadow-sm">
+                <a href="/items/<%= item.item_id %>" class="text-decoration-none text-dark">
+                    <div class="card h-100 shadow-sm">
 
-                    <!-- IMAGE -->
-                    <% if (item.images.length > 0) { %>
-                        <img src="/uploads/<%= item.images[0] %>" 
-                            class="card-img-top"
-                            style="height:200px; object-fit:cover;">
-                    <% } else { %>
-                        <img src="/uploads/placeholder.jpg" 
-                            class="card-img-top"
-                            style="height:200px; object-fit:cover;">
-                    <% } %>
+                        <!-- IMAGE -->
+                        <% if (item.images.length > 0) { %>
+                            <img src="/uploads/<%= item.images[0] %>" 
+                                class="card-img-top"
+                                style="height:200px; object-fit:cover;">
+                        <% } else { %>
+                            <img src="/uploads/placeholder.jpg" 
+                                class="card-img-top"
+                                style="height:200px; object-fit:cover;">
+                        <% } %>
 
-                    <div class="card-body d-flex flex-column">
+                        <div class="card-body d-flex flex-column">
 
-                        <h5 class="card-title"><%= item.title %></h5>
+                            <h5 class="card-title"><%= item.title %></h5>
 
-                        <p class="card-text">
-                            <%= item.description || 'No description provided.' %>
-                        </p>
+                            <p class="card-text">
+                                <%= item.description || 'No description provided.' %>
+                            </p>
 
-                        <p class="text-muted mb-2">
-                            <strong>Category:</strong> <%= item.category %><br>
-                            <strong>Size:</strong> <%= item.size || 'N/A' %><br>
-                            <strong>Condition:</strong> <%= item.condition_desc %><br>
+                            <p class="text-muted mb-2">
+                                <strong>Category:</strong> <%= item.category %><br>
+                                <strong>Size:</strong> <%= item.size || 'N/A' %><br>
+                                <strong>Condition:</strong> <%= item.condition_desc %><br>
 
-                            <% if (user && (user.role === 'sys_admin')) { %>
-                                <small>Charity ID: <%= item.charity_id %></small><br>
-                            <% } %>
-
-                            <strong>Charity:</strong> <%= item.charity_name ? item.charity_name : 'Not assigned' %>
-                        </p>
-
-                        <!-- Push buttons to bottom -->
-                        <div class="mt-auto">
-
-                            <% if (user) { %>
-
-                                <% if (item.status !== 'approved') { %>
-                                    <button class="btn btn-sm btn-secondary w-100" disabled>
-                                        Unavailable
-                                    </button>
-
-                                <% } else if (user.user_id === item.owner_id) { %>
-                                    <button class="btn btn-sm btn-info w-100" disabled>
-                                        Your Item
-                                    </button>
-
-                                <% } else if (item.request_status === 'approved') { %>
-                                    <button class="btn btn-sm btn-outline-success w-100" disabled>
-                                        Approved
-                                    </button>
-
-                                <% } else if (item.request_status === 'pending') { %>
-                                    <button class="btn btn-sm btn-outline-warning w-100" disabled>
-                                        Request Pending
-                                    </button>
-
-                                <% } else if (item.request_status === 'rejected') { %>
-                                    <button class="btn btn-sm btn-outline-danger w-100" disabled>
-                                        Rejected
-                                    </button>
-
-                                <% } else { %>
-                                    <form action="/requests" method="POST">
-                                        <input type="hidden" name="item_id" value="<%= item.item_id %>">
-                                        <button class="btn btn-sm btn-dark w-100">
-                                            Request Item
-                                        </button>
-                                    </form>
+                                <% if (user && (user.role === 'sys_admin')) { %>
+                                    <small>Charity ID: <%= item.charity_id %></small><br>
                                 <% } %>
 
-                            <% } %>
+                                <strong>Charity:</strong> <%= item.charity_name ? item.charity_name : 'Not assigned' %>
+                            </p>
+
+                            <!-- Push buttons to bottom -->
+                            <div class="mt-auto">
+
+                                <% if (user) { %>
+
+                                    <% if (item.status !== 'approved') { %>
+                                        <button class="btn btn-sm btn-secondary w-100" disabled>
+                                            Unavailable
+                                        </button>
+
+                                    <% } else if (user.user_id === item.owner_id) { %>
+                                        <button class="btn btn-sm btn-info w-100" disabled>
+                                            Your Item
+                                        </button>
+
+                                    <% } else if (item.request_status === 'approved') { %>
+                                        <button class="btn btn-sm btn-outline-success w-100" disabled>
+                                            Approved
+                                        </button>
+
+                                    <% } else if (item.request_status === 'pending') { %>
+                                        <button class="btn btn-sm btn-outline-warning w-100" disabled>
+                                            Request Pending
+                                        </button>
+
+                                    <% } else if (item.request_status === 'rejected') { %>
+                                        <button class="btn btn-sm btn-outline-danger w-100" disabled>
+                                            Rejected
+                                        </button>
+
+                                    <% } else { %>
+                                        <form action="/requests" method="POST">
+                                            <input type="hidden" name="item_id" value="<%= item.item_id %>">
+                                            <button class="btn btn-sm btn-dark w-100">
+                                                Request Item
+                                            </button>
+                                        </form>
+                                    <% } %>
+
+                                <% } %>
+
+                            </div>
+
+                            <small class="text-muted mt-2">
+                                Donated by: <%= item.username %>
+                            </small>
 
                         </div>
-
-                        <small class="text-muted mt-2">
-                            Donated by: <%= item.username %>
-                        </small>
-
                     </div>
-                </div>
+                </a>
             </div>
         <% }) %>
     </div>

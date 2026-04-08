@@ -600,12 +600,13 @@ app.post('/admin/charitydashboard/:id/reject',
 );
 
 
-//List all available items uploaded by other users
+// List all available items (with search)
 app.get('/items', (req, res) => {
 
     const userId = req.session.user ? req.session.user.user_id : null;
+    const search = req.query.search || '';
 
-    const sql = `
+    let sql = `
         SELECT 
             clothing_items.item_id,
             clothing_items.title,
@@ -616,7 +617,6 @@ app.get('/items', (req, res) => {
             clothing_items.status,
             clothing_items.charity_id,
             clothing_items.user_id AS owner_id,
-            clothing_items.image,
 
             charity_centres.charity_name AS charity_name,
             users.username,
@@ -633,16 +633,33 @@ app.get('/items', (req, res) => {
         JOIN users ON clothing_items.user_id = users.user_id
         LEFT JOIN charity_centres ON clothing_items.charity_id = charity_centres.charity_id
         WHERE clothing_items.status = 'approved'
-        ORDER BY clothing_items.created_at DESC
     `;
 
-    db.query(sql, [userId], (err, items) => {
+    const params = [userId];
+
+    // search filter
+    if (search) {
+        sql += `
+            AND (
+                clothing_items.title LIKE ?
+                OR clothing_items.description LIKE ?
+                OR clothing_items.category LIKE ?
+            )
+        `;
+
+        const like = `%${search}%`;
+        params.push(like, like, like);
+    }
+
+    sql += ` ORDER BY clothing_items.created_at DESC`;
+
+    db.query(sql, params, (err, items) => {
         if (err) {
             console.error(err);
             return res.send("Error loading items");
         }
 
-        // Get all images
+
         const imageSQL = `
             SELECT item_id, filename
             FROM item_images
@@ -655,7 +672,6 @@ app.get('/items', (req, res) => {
                 return res.send("Error loading images");
             }
 
-            // Map images to items
             const imageMap = {};
 
             images.forEach(img => {
@@ -665,17 +681,17 @@ app.get('/items', (req, res) => {
                 imageMap[img.item_id].push(img.filename);
             });
 
-            // Attach images array to each item
             items.forEach(item => {
                 item.images = imageMap[item.item_id] || [];
             });
 
-            res.render('items/index', { items });
+            res.render('items/index', { 
+                items,
+                search
+            });
         });
     });
 });
-
-
 
 //item creation page
 app.get('/items/new',
@@ -894,6 +910,59 @@ app.post('/items/:id/assign',
     }
 );
 
+
+app.get('/items/:id', (req, res) => {
+
+    const itemId = req.params.id;
+    const userId = req.session.user ? req.session.user.user_id : null;
+
+    const itemSQL = `
+        SELECT 
+            ci.*,
+            u.username,
+            cc.charity_name,
+
+            (
+                SELECT status
+                FROM item_requests
+                WHERE item_id = ci.item_id
+                AND requester_id = ?
+                LIMIT 1
+            ) AS request_status
+
+        FROM clothing_items ci
+        JOIN users u ON ci.user_id = u.user_id
+        LEFT JOIN charity_centres cc ON ci.charity_id = cc.charity_id
+        WHERE ci.item_id = ?
+        AND ci.status != 'deleted'
+    `;
+
+    db.query(itemSQL, [userId, itemId], (err, results) => {
+
+        if (err || results.length === 0) {
+            return res.send("Item not found");
+        }
+
+        const item = results[0];
+
+        const imageSQL = `
+            SELECT filename
+            FROM item_images
+            WHERE item_id = ?
+        `;
+
+        db.query(imageSQL, [itemId], (err, images) => {
+
+            if (err) return res.send("Error loading images");
+
+            item.images = images.map(img => img.filename);
+
+            res.render('items/show', { item, user: req.session.user });
+        });
+
+    });
+});
+
 //edit items uploaded by user
 app.get('/items/:id/edit', requireLogin, (req, res) => {
 
@@ -913,7 +982,7 @@ app.get('/items/:id/edit', requireLogin, (req, res) => {
         ORDER BY charity_name
     `;
 
-    // 🔵 DONOR FLOW
+    // DONOR FLOW
     if (user.role === 'donor') {
 
         const itemSQL = `
@@ -969,7 +1038,7 @@ app.get('/items/:id/edit', requireLogin, (req, res) => {
         });
     }
 
-    // 🟢 CHARITY ADMIN FLOW
+    // CHARITY ADMIN FLOW
     else if (user.role === 'charity_admin') {
 
         db.query(charitySQL, [user.user_id], (err, result) => {
@@ -996,7 +1065,7 @@ app.get('/items/:id/edit', requireLogin, (req, res) => {
 
                 const item = itemResults[0];
 
-                // 🔥 FETCH IMAGES
+                // FETCH IMAGES
                 const imageSQL = `
                     SELECT filename
                     FROM item_images
@@ -1054,7 +1123,7 @@ upload.array('images', 5), // max 5 images
 
     const newImages = req.files || [];
 
-    // 🔵 DONOR FLOW
+    // DONOR FLOW
     if (user.role === 'donor') {
 
         const userId = user.user_id;
@@ -1156,7 +1225,7 @@ upload.array('images', 5), // max 5 images
         );
     }
 
-    // 🟢 CHARITY ADMIN FLOW
+    // CHARITY ADMIN FLOW
     else if (user.role === 'charity_admin') {
 
         const charitySQL = `

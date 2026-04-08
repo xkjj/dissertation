@@ -33,8 +33,3 @@
     max-height: 500px;
     object-fit: contain;
 }
-
-img:hover {
-    transform: scale(1.05);
-    transition: 0.2s;
-}

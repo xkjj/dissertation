@@ -50,6 +50,11 @@ function determineStatusAfterEdit(currentStatus, role, oldCharityId, newCharityI
     const newId = newCharityId || null;
     const oldId = oldCharityId || null;
 
+    // REMOVE CHARITY (HIGHEST PRIORITY RULE)
+    if (newId === null) {
+        return ITEM_STATUS.UNASSIGNED;
+    }
+
     // CASE 1:
     // Unassigned → charity added
     if (
@@ -85,6 +90,16 @@ function determineStatusAfterEdit(currentStatus, role, oldCharityId, newCharityI
         oldId !== newId
     ) {
         return ITEM_STATUS.ASSIGNED;
+    }
+
+    // CASE 5:
+    // Approved → charity removed
+    if (
+        role === 'donor' &&
+        currentStatus === ITEM_STATUS.APPROVED &&
+        newId === null
+    ) {
+        return ITEM_STATUS.UNASSIGNED;
     }
 
     return currentStatus;

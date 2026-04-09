@@ -16,6 +16,7 @@
         <h2 class="fw-bolder display-5">Available Clothing</h2>
         <p class="lead">Browse donated clothing items</p>
     </div>
+    
     <form method="GET" action="/items" class="mb-4">
     <div class="input-group">
         <input 
@@ -30,9 +31,76 @@
 </form>
 </div>
 
+<div class="container-fluid">
+    <div class="row">
+
+        <!-- SIDEBAR -->
+        <div class="col-md-3">
+
+            <form method="GET" action="/items">
+
+                <h5>Filters</h5>
+
+                <!-- CATEGORY -->
+                <div class="mb-3">
+                    <label>Category</label>
+                    <select name="category" class="form-select">
+                        <option value="">All</option>
+                        <% ['Men','Women','Children','Unisex'].forEach(cat => { %>
+                            <option value="<%= cat %>" <%= category === cat ? 'selected' : '' %>>
+                                <%= cat %>
+                            </option>
+                        <% }) %>
+                    </select>
+                </div>
+
+                <!-- SIZE -->
+                <div class="mb-3">
+                    <label>Size</label>
+                    <select name="size" class="form-select">
+                        <option value="">All</option>
+                        <% ['XS','S','M','L','XL','XXL'].forEach(s => { %>
+                            <option value="<%= s %>" <%= size === s ? 'selected' : '' %>>
+                                <%= s %>
+                            </option>
+                        <% }) %>
+                    </select>
+                </div>
+
+                <!-- CONDITION -->
+                <div class="mb-3">
+                    <label>Condition</label>
+                    <select name="condition" class="form-select">
+                        <option value="">All</option>
+                        <% ['New','Good','Worn'].forEach(c => { %>
+                            <option value="<%= c %>" <%= condition === c ? 'selected' : '' %>>
+                                <%= c %>
+                            </option>
+                        <% }) %>
+                    </select>
+                </div>
+
+                <!-- SORT -->
+                <div class="mb-3">
+                    <label>Sort By</label>
+                    <select name="sort" class="form-select">
+                        <option value="">Newest</option>
+                        <option value="oldest" <%= sort === 'oldest' ? 'selected' : '' %>>Oldest</option>
+                        <option value="az" <%= sort === 'az' ? 'selected' : '' %>>A–Z</option>
+                    </select>
+                </div>
+
+                <!-- BUTTONS -->
+                <div class="d-grid gap-2">
+                    <button class="btn btn-dark">Apply Filters</button>
+                    <a href="/items" class="btn btn-outline-secondary">Clear</a>
+                </div>
+
+            </form>
+        </div>
 
 
-<div class="container">
+<div class="col-md-9">
 
     <% if (items.length === 0) { %>
         <p>No clothing items are currently available.</p>
@@ -129,6 +197,7 @@
         <% }) %>
     </div>
 
+    
     <a href="/homepage" class="btn btn-outline-dark mt-3">Back</a>
 </div>
 

@@ -6,7 +6,12 @@
 </head>
 <body class="container mt-4">
 
-<h2>Edit Clothing Item</h2>
+<div class="container mt-2 py-4 mb-4 bg-dark rounded-3 text-white">
+    <div class="p-4">
+        <h2 class="fw-bolder display-5">Edit clothing item</h2>
+        <p class="lead">Make changes to your donated clothing item</p>
+    </div>
+</div>
 
 <form action="/items/<%= item.item_id %>" method="POST" enctype="multipart/form-data">
 
@@ -95,16 +100,14 @@
                             onclick="openCarousel(this)">
 
                         <!--  Delete Button -->
-                        <form action="/items/<%= item.item_id %>/images/delete" method="POST" style="position:absolute; top:0; right:0;">
-                            <input type="hidden" name="filename" value="<%= img %>">
-
+                        <% if (canFullEdit) { %>
                             <button type="button"
+                                    onclick="deleteImage('<%= item.item_id %>', '<%= img %>')"
                                     class="btn btn-danger btn-sm position-absolute"
-                                    style="top:5px; right:5px; width:22px; height:22px; padding:0; border-radius:50%; z-index:10;"
-                                    onclick="deleteImage('<%= img %>')">
+                                    style="top:5px; right:5px; width:22px; height:22px; padding:0; border-radius:50%; z-index:10;">
                                 ✕
                             </button>
-                        </form>
+                        <% } %>
 
                     </div>
 
@@ -126,9 +129,7 @@
         <input type="file" name="images" multiple class="form-control" onchange="previewImage(event)" <%= canFullEdit ? '' : 'disabled' %>>
 
         <!-- Preview new image -->
-        <img id="preview" 
-            class="img-thumbnail mt-2" 
-            style="max-width:150px; display:none;" <%= canFullEdit ? '' : 'hidden' %>>
+        <div id="preview-container" class="d-flex flex-wrap mt-2"></div>
     </div>
 
 
@@ -174,21 +175,33 @@
 
             </div>
         </div>
-        </div>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+     </div>
+
 <script>
+src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"
+
 function previewImage(event) {
-    const input = event.target;
+    const files = event.target.files;
+    const container = document.getElementById('preview-container');
 
-    if (input.disabled) return; // prevent preview if not allowed
+    container.innerHTML = ''; // clear previous previews
 
-    const file = input.files[0];
-    const preview = document.getElementById('preview');
+    if (!files.length) return;
 
-    if (file) {
-        preview.src = URL.createObjectURL(file);
-        preview.style.display = 'block';
-    }
+    Array.from(files).forEach(file => {
+
+        if (!file.type.startsWith('image/')) return;
+
+        const img = document.createElement('img');
+
+        img.src = URL.createObjectURL(file);
+        img.className = "me-2 mb-2 rounded shadow-sm";
+        img.style.width = "100px";
+        img.style.height = "100px";
+        img.style.objectFit = "cover";
+
+        container.appendChild(img);
+    });
 }
 
 function openCarousel(element) {
@@ -200,21 +213,19 @@ function openCarousel(element) {
     carouselInstance.to(parseInt(index));
 }
 
-function deleteImage(filename) {
-    if (confirm('Delete this image?')) {
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.action = '/items/<%= item.item_id %>/images/delete';
-        
-        const input = document.createElement('input');
-        input.type = 'hidden';
-        input.name = 'filename';
-        input.value = filename;
-        
-        form.appendChild(input);
-        document.body.appendChild(form);
-        form.submit();
-    }
+function deleteImage(itemId, filename) {
+
+    if (!confirm("Delete this image?")) return;
+
+    fetch(`/items/${itemId}/images/delete`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ filename })
+    })
+    .then(res => location.reload())
+    .catch(err => console.error(err));
 }
 </script>
 </body>

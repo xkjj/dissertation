@@ -68,6 +68,7 @@ app.use(sessions({
     resave: false
 }));
 
+app.use(express.json());
 app.use(cookieParser());
 
 app.use((req, res, next) => {
@@ -604,7 +605,13 @@ app.post('/admin/charitydashboard/:id/reject',
 app.get('/items', (req, res) => {
 
     const userId = req.session.user ? req.session.user.user_id : null;
-    const search = req.query.search || '';
+    const {
+        search = '',
+        category = '',
+        size = '',
+        condition = '',
+        sort = ''
+    } = req.query;
 
     let sql = `
         SELECT 
@@ -639,19 +646,36 @@ app.get('/items', (req, res) => {
 
     // search filter
     if (search) {
-        sql += `
-            AND (
-                clothing_items.title LIKE ?
-                OR clothing_items.description LIKE ?
-                OR clothing_items.category LIKE ?
-            )
-        `;
-
-        const like = `%${search}%`;
-        params.push(like, like, like);
+        sql += ` AND (title LIKE ? OR description LIKE ?)`;
+        params.push(`%${search}%`, `%${search}%`);
     }
 
-    sql += ` ORDER BY clothing_items.created_at DESC`;
+    // category filter
+    if (category) {
+        sql += ` AND category = ?`;
+        params.push(category);
+    }
+
+    // size filter
+    if (size) {
+        sql += ` AND size = ?`;
+        params.push(size);
+    }
+
+    // condition filter
+    if (condition) {
+        sql += ` AND condition_desc = ?`;
+        params.push(condition);
+    }
+
+    // sort by newest/oldest
+    if (sort === 'oldest') {
+        sql += ` ORDER BY clothing_items.created_at ASC`;
+    } else if (sort === 'az') {
+        sql += ` ORDER BY clothing_items.title ASC`;
+    } else {
+        sql += ` ORDER BY clothing_items.created_at DESC`; // default newest
+    }
 
     db.query(sql, params, (err, items) => {
         if (err) {
@@ -687,7 +711,11 @@ app.get('/items', (req, res) => {
 
             res.render('items/index', { 
                 items,
-                search
+                search,
+                category,
+                size,
+                condition,
+                sort
             });
         });
     });
@@ -1220,6 +1248,8 @@ upload.array('images', 5), // max 5 images
                         );
                     }
                     res.redirect('/items/my');
+                    console.log("NEW STATUS:", newStatus);
+                    console.log("NEW CHARITY:", newCharityId);
                 });
             }
         );

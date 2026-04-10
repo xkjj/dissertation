@@ -37,7 +37,8 @@
                                 <input type="hidden" name="user_id" value="<%= user.user_id %>">
 
                                 <select name="role" class="form-select form-select-sm">
-                                <option value="user" <%= user.role === 'user' ? 'selected' : '' %>>User</option>
+                                <option value="donor" <%= user.role === 'donor' ? 'selected' : '' %>>Donor</option>
+                                <option value="recipient" <%= user.role === 'recipient' ? 'selected' : '' %>>Recipient</option>
                                 <option value="charity_admin" <%= user.role === 'charity_admin' ? 'selected' : '' %>>Charity Admin</option>
                                 </select>
 

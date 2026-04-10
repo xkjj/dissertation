@@ -604,118 +604,143 @@ app.post('/admin/charitydashboard/:id/reject',
 // List all available items (with search)
 app.get('/items', (req, res) => {
 
-    const userId = req.session.user ? req.session.user.user_id : null;
-    const {
-        search = '',
-        category = '',
-        size = '',
-        condition = '',
-        sort = ''
-    } = req.query;
+        const userId = req.session.user ? req.session.user.user_id : null;
 
-    let sql = `
-        SELECT 
-            clothing_items.item_id,
-            clothing_items.title,
-            clothing_items.description,
-            clothing_items.category,
-            clothing_items.size,
-            clothing_items.condition_desc,
-            clothing_items.status,
-            clothing_items.charity_id,
-            clothing_items.user_id AS owner_id,
+        const {
+            search = '',
+            category = '',
+            size = '',
+            condition = '',
+            sort = '',
+            page = 1
+        } = req.query;
 
-            charity_centres.charity_name AS charity_name,
-            users.username,
+        const limit = 8;
+        const offset = (page -1) * limit;
 
-            (
-                SELECT status
-                FROM item_requests
-                WHERE item_requests.item_id = clothing_items.item_id
-                AND item_requests.requester_id = ?
-                LIMIT 1
-            ) AS request_status
-
-        FROM clothing_items
-        JOIN users ON clothing_items.user_id = users.user_id
-        LEFT JOIN charity_centres ON clothing_items.charity_id = charity_centres.charity_id
-        WHERE clothing_items.status = 'approved'
-    `;
-
-    const params = [userId];
-
-    // search filter
-    if (search) {
-        sql += ` AND (title LIKE ? OR description LIKE ?)`;
-        params.push(`%${search}%`, `%${search}%`);
-    }
-
-    // category filter
-    if (category) {
-        sql += ` AND category = ?`;
-        params.push(category);
-    }
-
-    // size filter
-    if (size) {
-        sql += ` AND size = ?`;
-        params.push(size);
-    }
-
-    // condition filter
-    if (condition) {
-        sql += ` AND condition_desc = ?`;
-        params.push(condition);
-    }
-
-    // sort by newest/oldest
-    if (sort === 'oldest') {
-        sql += ` ORDER BY clothing_items.created_at ASC`;
-    } else if (sort === 'az') {
-        sql += ` ORDER BY clothing_items.title ASC`;
-    } else {
-        sql += ` ORDER BY clothing_items.created_at DESC`; // default newest
-    }
-
-    db.query(sql, params, (err, items) => {
-        if (err) {
-            console.error(err);
-            return res.send("Error loading items");
-        }
-
-
-        const imageSQL = `
-            SELECT item_id, filename
-            FROM item_images
+        let baseSQL = `
+            FROM clothing_items
+            JOIN users ON clothing_items.user_id = users.user_id
+            LEFT JOIN charity_centres ON clothing_items.charity_id = charity_centres.charity_id
+            WHERE clothing_items.status = 'approved'
         `;
 
-        db.query(imageSQL, (err, images) => {
+        const params = [];
 
+        // SEARCH
+        if (search) {
+            baseSQL += ` AND (clothing_items.title LIKE ? OR clothing_items.description LIKE ?)`;
+            params.push(`%${search}%`, `%${search}%`);
+        }
+
+        // FILTERS
+        if (category) {
+            baseSQL += ` AND clothing_items.category = ?`;
+            params.push(category);
+        }
+
+        if (size) {
+            baseSQL += ` AND clothing_items.size = ?`;
+            params.push(size);
+        }
+
+        if (condition) {
+            baseSQL += ` AND clothing_items.condition_desc = ?`;
+            params.push(condition);
+        }
+
+        // SORTING
+        let orderBy = ` ORDER BY clothing_items.created_at DESC`;
+
+        if (sort === 'oldest') {
+            orderBy = ` ORDER BY clothing_items.created_at ASC`;
+        } else if (sort === 'az') {
+            orderBy = ` ORDER BY clothing_items.title ASC`;
+        }
+
+        const dataSQL = `
+            SELECT 
+                clothing_items.item_id,
+                clothing_items.title,
+                clothing_items.description,
+                clothing_items.category,
+                clothing_items.size,
+                clothing_items.condition_desc,
+                clothing_items.status,
+                clothing_items.charity_id,
+                clothing_items.user_id AS owner_id,
+                charity_centres.charity_name,
+                users.username,
+
+                (
+                    SELECT status
+                    FROM item_requests
+                    WHERE item_requests.item_id = clothing_items.item_id
+                    AND item_requests.requester_id = ?
+                    LIMIT 1
+                ) AS request_status
+
+            ${baseSQL}
+            ${orderBy}
+            LIMIT ? OFFSET ?
+        `;
+
+        const dataParams = [userId, ...params, limit, offset];
+
+        db.query(dataSQL, dataParams, (err, items) => {
             if (err) {
                 console.error(err);
-                return res.send("Error loading images");
+                return res.send("Error loading items");
             }
 
-            const imageMap = {};
+            // COUNT QUERY (same filters, NO LIMIT)
+            const countSQL = `SELECT COUNT(*) AS total ${baseSQL}`;
 
-            images.forEach(img => {
-                if (!imageMap[img.item_id]) {
-                    imageMap[img.item_id] = [];
+            db.query(countSQL, params, (err, countResult) => {
+
+                if (err) {
+                    console.error(err);
+                    return res.send("Error counting items");
                 }
-                imageMap[img.item_id].push(img.filename);
-            });
 
-            items.forEach(item => {
-                item.images = imageMap[item.item_id] || [];
-            });
+            const totalItems = countResult[0].total;
+            const totalPages = Math.ceil(totalItems / limit);
 
-            res.render('items/index', { 
-                items,
-                search,
-                category,
-                size,
-                condition,
-                sort
+            const imageSQL = `
+                SELECT item_id, filename
+                FROM item_images
+            `;
+
+            db.query(imageSQL, (err, images) => {
+
+                if (err) {
+                    console.error(err);
+                    return res.send("Error loading images");
+                }
+
+                const imageMap = {};
+
+                images.forEach(img => {
+                    if (!imageMap[img.item_id]) {
+                        imageMap[img.item_id] = [];
+                    }
+                    imageMap[img.item_id].push(img.filename);
+                });
+
+                items.forEach(item => {
+                    item.images = imageMap[item.item_id] || [];
+                });
+
+                res.render('items/index', { 
+                    items,
+                    search,
+                    category,
+                    size,
+                    condition,
+                    sort,
+                    currentPage: parseInt(page),
+                    totalPages
+                });
             });
         });
     });
@@ -887,6 +912,89 @@ app.get('/items/unassigned',
             if (err) return res.send("Error loading items");
 
             res.render('items/unassigned', { items });
+        });
+    }
+);
+
+app.get('/items/to-send',
+    requireLogin,
+    requireRole('donor'),
+    (req, res) => {
+
+        const userId = req.session.user.user_id;
+
+        const sql = `
+                SELECT 
+                    ci.*,
+                    cc.charity_name,
+                    cc.charity_address,
+                    cc.charity_postcode,
+                    cc.charity_email,
+                    cc.charity_phone
+                FROM clothing_items ci
+                LEFT JOIN charity_centres cc 
+                    ON ci.charity_id = cc.charity_id
+                WHERE ci.user_id = ?
+                AND ci.status = 'allocated'
+                ORDER BY ci.created_at DESC
+            `;
+
+        db.query(sql, [userId], (err, items) => {
+
+            if (err) {
+                console.error(err);
+                return res.send("Error loading items");
+            }
+
+            // 🔥 attach images (same pattern you use)
+            db.query(`SELECT item_id, filename FROM item_images`, (err, images) => {
+
+                const imageMap = {};
+
+                images.forEach(img => {
+                    if (!imageMap[img.item_id]) {
+                        imageMap[img.item_id] = [];
+                    }
+                    imageMap[img.item_id].push(img.filename);
+                });
+
+                items.forEach(item => {
+                    item.images = imageMap[item.item_id] || [];
+                });
+
+                res.render('items/to_send', { items });
+
+            });
+
+        });
+
+    }
+);
+
+app.post('/items/:id/mark-sent',
+    requireLogin,
+    requireRole('donor'),
+    (req, res) => {
+
+        const itemId = req.params.id;
+        const userId = req.session.user.user_id;
+
+        const sql = `
+            UPDATE clothing_items
+            SET status = 'sent'
+            WHERE item_id = ?
+            AND user_id = ?
+            AND status = 'allocated'
+        `;
+
+        db.query(sql, [itemId, userId], err => {
+
+            if (err) {
+                console.error(err);
+                return res.send("Update failed");
+            }
+
+            res.redirect('/items/to-send');
         });
     }
 );

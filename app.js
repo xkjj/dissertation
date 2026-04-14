@@ -266,7 +266,48 @@ app.post('/createaccount', (req, res) => {
 
 //render homepage if user is logged in
 app.get("/homepage", requireLogin, (req, res) => {
-    res.render("homepage", { user: req.session.user });
+    const user = req.session.user || null;
+
+    // Recently delivered items
+    const deliveredSQL = `
+        SELECT ci.item_id, ci.title, ii.filename
+        FROM clothing_items ci
+        LEFT JOIN item_images ii ON ci.item_id = ii.item_id
+        WHERE ci.status = 'delivered'
+        GROUP BY ci.item_id
+        LIMIT 6
+    `;
+
+    // Featured available items
+    const featuredSQL = `
+        SELECT ci.item_id, ci.title, ci.description, ii.filename
+        FROM clothing_items ci
+        LEFT JOIN item_images ii ON ci.item_id = ii.item_id
+        WHERE ci.status = 'approved'
+        GROUP BY ci.item_id
+        ORDER BY ci.created_at DESC
+        LIMIT 6
+    `;
+
+    db.query(deliveredSQL, (err, deliveredItems) => {
+        if (err) {
+            console.error(err);
+            return res.send("Error loading delivered items");
+        }
+
+        db.query(featuredSQL, (err, featuredItems) => {
+            if (err) {
+                console.error(err);
+                return res.send("Error loading featured items");
+            }
+
+            res.render('homepage', {
+                user,
+                deliveredItems,
+                featuredItems
+            });
+        });
+    });
 });
 
 //page for successful account creation
@@ -739,7 +780,114 @@ app.get('/items', (req, res) => {
                     condition,
                     sort,
                     currentPage: parseInt(page),
-                    totalPages
+                    totalPages,
+                });
+            });
+        });
+    });
+});
+
+// API endpoint for live search on index page
+app.get('/api/items', (req, res) => {
+    
+    const userId = req.session.user ? req.session.user.user_id : null;
+
+    const {
+        search = '',
+        category = '',
+        size = '',
+        condition = '',
+        sort = '',
+        page = 1
+    } = req.query;
+
+    const limit = 8;
+    const offset = (page - 1) * limit;
+    const cleanSearch = (search || '').trim();
+
+    let baseSQL = `
+        FROM clothing_items
+        JOIN users ON clothing_items.user_id = users.user_id
+        LEFT JOIN charity_centres ON clothing_items.charity_id = charity_centres.charity_id
+        WHERE clothing_items.status = 'approved'
+    `;
+
+    const params = [];
+
+    if (cleanSearch) {
+        baseSQL += ` AND (clothing_items.title LIKE ? OR clothing_items.description LIKE ?)`;
+        params.push(`%${cleanSearch}%`, `%${cleanSearch}%`);
+    }
+
+    if (category) {
+        baseSQL += ` AND clothing_items.category = ?`;
+        params.push(category);
+    }
+
+    if (size) {
+        baseSQL += ` AND clothing_items.size = ?`;
+        params.push(size);
+    }
+
+    if (condition) {
+        baseSQL += ` AND clothing_items.condition_desc = ?`;
+        params.push(condition);
+    }
+
+    // COUNT QUERY
+    db.query(`SELECT COUNT(*) AS total ${baseSQL}`, params, (err, countResult) => {
+
+        const total = countResult[0].total;
+
+        let sql = `
+            SELECT 
+            clothing_items.*, 
+            users.username, 
+            charity_centres.charity_name,
+            clothing_items.user_id AS owner_id,
+            (SELECT status FROM item_requests 
+             WHERE item_id = clothing_items.item_id 
+             AND requester_id = ? LIMIT 1) AS request_status
+        ${baseSQL}
+        `;
+
+        if (sort === 'oldest') {
+            sql += ` ORDER BY created_at ASC`;
+        } else if (sort === 'az') {
+            sql += ` ORDER BY title ASC`;
+        } else {
+            sql += ` ORDER BY created_at DESC`;
+        }
+
+        sql += ` LIMIT ? OFFSET ?`;
+
+        db.query(sql, [userId, ...params, limit, offset], (err, items) => {
+            if (err) {
+                console.error("SQL Error:", err);
+                return res.status(500).json({ error: "Database error" });
+            }
+
+            const imageSQL = `SELECT item_id, filename FROM item_images`;
+
+            db.query(imageSQL, (err, images) => {
+
+                const imageMap = {};
+
+                images.forEach(img => {
+                    if (!imageMap[img.item_id]) imageMap[img.item_id] = [];
+                    imageMap[img.item_id].push(img.filename);
+                });
+
+                items.forEach(item => {
+                    item.images = imageMap[item.item_id] || [];
+                });
+
+                res.json({
+                    items,
+                    total,
+                    totalPages: Math.ceil(total / limit),
+                    currentPage: parseInt(page),
+                    currentUserId: userId
                 });
             });
         });
@@ -2341,4 +2489,4 @@ app.get('/logout', (req, res) => {
 
 //server
 app.listen(process.env.PORT || 3000);
-console.log('Server is listening//localhost:3000/');
+console.log('Server is listening: localhost:3000/');

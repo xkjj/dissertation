@@ -14,17 +14,25 @@
 </head>
 <body class="container mt-4">
 
-<div class="container mt-2 py-4 mb-4 bg-dark rounded-3 text-white">
-    <div class="p-4">
-        <h2 class="fw-bolder display-5">My Unassigned Clothing Listings</h2>
+<div class="container mt-2 mb-4 bg-dark rounded-3 text-white position-relative">
+    <div class="p-5 bg-dark text-white rounded-3 text-center">
+      <div class="position-absolute top-0 start-0 p-3 d-flex flex-column align-items-start gap-1">
+          <span class="badge bg-light text-dark px-3 py-2 fs-6">
+             Logged in as: <%= user.username %> (<%= user.role %>)
+          </span>
+          <a href="/logout" class="btn btn-outline-light mt-2">Logout</a>
+      </div>
+
+        <h1 class="display-5 fw-bold">Unassigned Clothing Listings</h1>
         <p class="lead">Clothing items that need to be assigned to a charity</p>
+
+        <a href="/items/my" class="btn btn-light mt-2 me-2">Back</a>
+
     </div>
 </div>
 
-<a href="/items/new" class="btn btn-dark mb-3">Add New Item</a>
-
 <% if (items.length === 0) { %>
-    <p>You have not listed any clothing items yet.</p>
+    <p>You do not have any unassigned listings</p>
 <% } %>
 
 <% items.forEach(item => { %>
@@ -54,9 +62,6 @@
         </div>
     </div>
 <% }) %>
-
-<a href="/items/my" class="btn btn-outline-dark mt-3">Back</a>
-<a href="/homepage" class="btn btn-outline-dark mt-3">Homepage</a>
 
 </body>
 </html>

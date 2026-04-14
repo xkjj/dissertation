@@ -10,41 +10,207 @@
   <link rel="stylesheet" href="./styles.css">
 </head>
 
-<body>
-    <div class="container mt-2 py-4 mb-4 bg-dark rounded-3 text-white">
-        <div class="p-4 mb-4 lc-block">
-          <div class="lc-block">
-            <div editable="rich">
-              <h2 class="fw-bolder display-3">Homepage</h2>
-            </div>
-          </div>
-          <div class="lc-block col-md-8">
-            <div editable="rich">
-              <p class="lead">Placeholder
-              </p>
-            </div>
-          </div>
-        </div>
+<body class="container mt-4">
+
+    <!-- HERO -->
+<div class="container mt-2 mb-4 bg-dark rounded-3 text-white position-relative">
+    <div class="p-5 bg-dark text-white rounded-3 text-center">
+      <div class="position-absolute top-0 start-0 p-3 d-flex flex-column align-items-start gap-1">
+          <span class="badge bg-light text-dark px-3 py-2 fs-6">
+             Logged in as: <%= user.username %> (<%= user.role %>)
+          </span>
+          <a href="/logout" class="btn btn-outline-light mt-2">Logout</a>
       </div>
 
-  <nav class="navbar navbar-expand-lg bg-body-tertiary" data-bs-theme="dark">
-    <a class="btn btn-outline-light" href="/logout">Logout</a>
-        <a class="btn btn-outline-light" href="/admin/dashboard">Dashboard</a>
-        <a class="btn btn-outline-light" href="/items">Items</a>
-        <a class="btn btn-outline-light" href="/items/my">My Listings</a>
-        <a class="btn btn-outline-light" href="/requests/my">My Requests</a>
-        <a class="btn btn-outline-light" href="/admin/charitydashboard">Charity Dashboard</a>
-  </nav>
+        <h1 class="display-5 fw-bold">Making a Difference</h1>
+        <p class="lead">Your donations are changing lives</p>
+
+        <a href="/items" class="btn btn-light mt-2 me-2">Browse Items</a>
+
+        <% if (user && user.role === 'donor') { %>
+            <a href="/items/new" class="btn btn-outline-light mt-2">Donate Item</a>
+        <% } %>
+
+    <% if (user && user.role === 'sys_admin') { %>
+        <a href="/admin/dashboard" class="btn btn-outline-light mt-2">
+            Admin Dashboard
+        </a>
+    <% } %>
+
+    <% if (user && user.role === 'donor') { %>
+        <a href="/items/my" class="btn btn-outline-light mt-2">
+            My Listings
+        </a>
+
+        <a href="/requests/my" class="btn btn-outline-light mt-2">
+            My Requests
+        </a>
+    <% } %>
+
+    <% if (user && user.role === 'charity_admin') { %>
+        <a href="/admin/charitydashboard" class="btn btn-outline-light mt-2">
+            Charity Dashboard
+        </a>
+    <% } %>
+
+    </div>
+</div>
+
+<div class="container mt-4">
 
 
+    <!-- RECENTLY DELIVERED -->
+    <div class="container mb-5">
 
-  <div class="container my-4 text-centre">
+        <h3 class="mb-3">Recently Delivered</h3>
+        <p class="text-muted">Items successfully received by those in need</p>
+
+        <div id="deliveredCarousel" class="carousel slide" data-bs-ride="carousel">
+
+            <div class="carousel-inner">
+
+                <% deliveredItems.forEach((item, index) => { %>
+                    <div class="carousel-item <%= index === 0 ? 'active' : '' %>">
+
+                        <div class="row justify-content-center">
+
+                            <div class="col-md-4">
+
+                                <div class="card shadow-sm">
+
+                                    <img src="/uploads/<%= item.filename || 'placeholder.jpg' %>" 
+                                        class="card-img-top"
+                                        style="height:250px; object-fit:cover;">
+
+                                    <div class="card-body text-center">
+                                        <h6><%= item.title %></h6>
+                                        <span class="badge bg-success">Delivered ✔</span>
+                                    </div>
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+                <% }) %>
+
+            </div>
+
+    <!-- Controls -->
+            <button class="carousel-control-prev" type="button" data-bs-target="#deliveredCarousel" data-bs-slide="prev">
+                <span class="carousel-control-prev-icon"></span>
+            </button>
+
+            <button class="carousel-control-next" type="button" data-bs-target="#deliveredCarousel" data-bs-slide="next">
+                <span class="carousel-control-next-icon"></span>
+            </button>
+
+        </div>
+
+    </div>
+
+    <!-- HOW IT WORKS -->
+    <div class="container mb-5 text-center">
+
+        <h3 class="mb-4">How It Works</h3>
+
+        <div class="row">
+
+            <div class="col-md-4">
+                <h5>1. Donate</h5>
+                <p>Upload clothing items you no longer need</p>
+            </div>
+
+            <div class="col-md-4">
+                <h5>2. Match</h5>
+                <p>Charities allocate items to recipients</p>
+            </div>
+
+            <div class="col-md-4">
+                <h5>3. Deliver</h5>
+                <p>Items reach those who need them most</p>
+            </div>
+
+        </div>
+
+    </div>
+
+    <div class="container mb-5">
+
+        <h3 class="mb-3">Available Items</h3>
+
+        <div class="row">
+
+            <% featuredItems.forEach(item => { %>
+
+                <div class="col-lg-3 col-md-4 col-sm-6 mb-4">
+
+                    <a href="/items/<%= item.item_id %>" class="text-decoration-none text-dark">
+
+                        <div class="card h-100 shadow-sm">
+
+                            <img src="/uploads/<%= item.filename || 'placeholder.jpg' %>" 
+                                class="card-img-top"
+                                style="height:180px; object-fit:cover;">
+
+                            <div class="card-body">
+                                <h6><%= item.title %></h6>
+                                <p class="small text-muted">
+                                    <%= item.description || 'No description' %>
+                                </p>
+                            </div>
+
+                        </div>
+
+                    </a>
+
+                </div>
+
+            <% }) %>
+
+        </div>
 
 
+    </div>
 
+    <div class="container mb-5 text-center">
 
-  </div>
+        <h3 class="mb-4">Our Impact</h3>
 
+        <div class="row">
+
+            <div class="col-md-4">
+                <h4>100+</h4>
+                <p>Items Donated</p>
+            </div>
+
+            <div class="col-md-4">
+                <h4>75+</h4>
+                <p>Recipients Helped</p>
+            </div>
+
+            <div class="col-md-4">
+                <h4>5+</h4>
+                <p>Partner Charities</p>
+            </div>
+
+        </div>
+
+    </div>
+</div>
+
+<script>
+if (!sessionStorage.getItem('seenPopup')) {
+
+    setTimeout(() => {
+        alert("🎉 New items have been successfully delivered this week!");
+        sessionStorage.setItem('seenPopup', 'true');
+    }, 1000);
+
+}
+</script>
 </body>
 
 </html>

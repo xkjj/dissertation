@@ -9,109 +9,178 @@
     <link rel="stylesheet" href="/styles.css">
 </head>
 
-<body>
+<body class="container mt-4">
 
-<div class="container mt-2 py-4 mb-4 bg-dark rounded-3 text-white">
-    <div class="p-4">
-        <h2 class="fw-bolder display-5">Donate Clothing</h2>
+<div class="container mt-2 mb-4 bg-dark rounded-3 text-white position-relative">
+    <div class="p-5 bg-dark text-white rounded-3 text-center">
+      <div class="position-absolute top-0 start-0 p-3 d-flex flex-column align-items-start gap-1">
+          <span class="badge bg-light text-dark px-3 py-2 fs-6">
+             Logged in as: <%= user.username %> (<%= user.role %>)
+          </span>
+          <a href="/logout" class="btn btn-outline-light mt-2">Logout</a>
+      </div>
+
+        <h1 class="display-5 fw-bold">Donate Clothing</h1>
         <p class="lead">List unwanted clothing items for redistribution</p>
+
+        <a href="/items/my" class="btn btn-light mt-2 me-2">Back</a>
     </div>
 </div>
 
-<div class="container">
+<div class="container mt-4" style="max-width: 800px;">
 
-    <form action="/items" method="POST" enctype="multipart/form-data">
+    <div class="card shadow-sm p-4">
 
-        <div class="mb-3">
-            <label class="form-label">Item Title</label>
-            <input type="text" name="title" class="form-control" required>
-        </div>
+        <form action="/items" method="POST" enctype="multipart/form-data">
 
-        <div class="mb-3">
-            <label class="form-label">Description</label>
-            <textarea name="description" class="form-control"></textarea>
-        </div>
+            <!-- TITLE -->
+            <div class="mb-3">
+                <label class="form-label fw-semibold">Item Title</label>
+                <input type="text" name="title" class="form-control" required>
+            </div>
 
-        <div class="row mb-3">
-            <div class="col">
-                <label class="form-label">Category</label>
-                <select name="category" class="form-select" required>
-                    <option>Men</option>
-                    <option>Women</option>
-                    <option>Children</option>
-                    <option>Unisex</option>
+            <!-- DESCRIPTION -->
+            <div class="mb-3">
+                <label class="form-label fw-semibold">Description</label>
+                <textarea name="description" class="form-control" rows="3"></textarea>
+            </div>
+
+            <!-- CATEGORY + SIZE -->
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold">Category</label>
+                    <select name="category" class="form-select" required>
+                        <option>Men</option>
+                        <option>Women</option>
+                        <option>Children</option>
+                        <option>Unisex</option>
+                    </select>
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold">Size</label>
+                    <select name="size" class="form-select" required>
+                        <option>XS</option>
+                        <option>S</option>
+                        <option>M</option>
+                        <option>L</option>
+                        <option>XL</option>
+                        <option>XXL</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- CONDITION -->
+            <div class="mb-3">
+                <label class="form-label fw-semibold">Condition</label>
+                <select name="condition_desc" class="form-select" required>
+                    <option>New</option>
+                    <option>Good</option>
+                    <option>Worn</option>
                 </select>
             </div>
 
-            <div class="col">
-                <label class="form-label">Size</label>
-                <select name="size" class="form-select" required>
-                    <option>XS</option>
-                    <option>S</option>
-                    <option>M</option>
-                    <option>L</option>
-                    <option>XL</option>
-                    <option>XXL</option>
+            <!-- CHARITY -->
+            <div class="mb-3">
+                <label class="form-label fw-semibold">Assign to Charity</label>
+                <select name="charity_id" class="form-select">
+                    <option value="">No Charity Assigned</option>
+                    <% charities.forEach(charity => { %>
+                        <option value="<%= charity.charity_id %>">
+                            <%= charity.charity_name %>
+                        </option>
+                    <% }) %>
                 </select>
             </div>
-        </div>
 
-        <div class="mb-3">
-            <label class="form-label">Condition</label>
-            <select name="condition_desc" class="form-select" required>
-                <option>New</option>
-                <option>Good</option>
-                <option>Worn</option>
-            </select>
-        </div>
+            <!-- IMAGE -->
+            <div class="mb-4">
+                <label class="form-label fw-semibold">Item Images</label>
 
-        <div class="mb-3">
-            <label class="form-label">Assign to Charity</label>
-            <select name="charity_id" class="form-select">
-                <option value="">No Charity Assigned</option>
-                <% charities.forEach(charity => { %>
-                    <option value="<%= charity.charity_id %>">
-                        <%= charity.charity_name %>
-                    </option>
-                <% }) %>
-            </select>
-        </div>
+                <input type="file" id="imageInput" class="form-control" multiple>
 
-        <div class="mb-3">
-            <label class="form-label">Item Image</label>
-            <input type="file" name="images" class="form-control" multiple onchange="previewImage(event)">
+                <div id="previewContainer" class="d-flex flex-wrap gap-2 mt-3"></div>
+            </div>
 
-            <div id="previewContainer" class="d-flex flex-wrap mt-2"></div>
-            <small id="imageCount" class="text-muted"></small>
+            <!-- BUTTONS -->
+            <div class="d-flex justify-content-between align-items-center mt-4">
+                <a href="/items/my" class="btn btn-outline-secondary">
+                    Cancel
+                </a>
 
-            <!-- Preview image -->
-            <img id="preview" style="max-width:150px; margin-top:10px; display:none;">
-        </div>
+                <button class="btn btn-dark px-4">
+                    Submit Listing
+                </button>
+            </div>
 
-        <button class="btn btn-dark">Submit Listing</button>
-        <a href="/items/my" class="btn btn-outline-dark ms-2">Cancel</a>
+        </form>
 
-    </form>
+    </div>
+
 </div>
 
 <script>
-function previewImages(event) {
-    const files = event.target.files;
-    const container = document.getElementById('previewContainer');
+let selectedFiles = [];
 
-    container.innerHTML = ''; // clear previous previews
+document.getElementById("imageInput").addEventListener("change", function (event) {
+    const newFiles = Array.from(event.target.files);
 
-    Array.from(files).forEach(file => {
-        const img = document.createElement('img');
+    // Add new files to array
+    selectedFiles = selectedFiles.concat(newFiles);
+
+    renderPreviews();
+});
+
+// Render previews
+function renderPreviews() {
+    const container = document.getElementById("previewContainer");
+    container.innerHTML = "";
+
+    selectedFiles.forEach((file, index) => {
+        const wrapper = document.createElement("div");
+        wrapper.style.position = "relative";
+
+        const img = document.createElement("img");
         img.src = URL.createObjectURL(file);
-        img.style.width = '100px';
-        img.style.height = '100px';
-        img.style.objectFit = 'cover';
-        img.classList.add('me-2', 'mb-2', 'rounded');
+        img.style.width = "100px";
+        img.style.height = "100px";
+        img.style.objectFit = "cover";
+        img.classList.add("rounded", "border");
 
-        container.appendChild(img);
+        const removeBtn = document.createElement("button");
+        removeBtn.innerHTML = "×";
+        removeBtn.type = "button";
+        removeBtn.className = "btn btn-danger btn-sm";
+        removeBtn.style.position = "absolute";
+        removeBtn.style.top = "-8px";
+        removeBtn.style.right = "-8px";
+        removeBtn.style.borderRadius = "50%";
+        removeBtn.style.width = "24px";
+        removeBtn.style.height = "24px";
+        removeBtn.style.padding = "0";
+        removeBtn.style.lineHeight = "1";
+
+        removeBtn.onclick = () => {
+            selectedFiles.splice(index, 1);
+            renderPreviews();
+        };
+
+        wrapper.appendChild(img);
+        wrapper.appendChild(removeBtn);
+        container.appendChild(wrapper);
     });
 }
+
+// Before submit, replace file input with selectedFiles
+document.querySelector("form").addEventListener("submit", function (e) {
+    const dataTransfer = new DataTransfer();
+
+    selectedFiles.forEach(file => {
+        dataTransfer.items.add(file);
+    });
+
+    document.getElementById("imageInput").files = dataTransfer.files;
+});
 </script>
 </body>
 </html>

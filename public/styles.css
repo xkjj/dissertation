@@ -22,6 +22,8 @@
 
 .card{
     margin-bottom: 10px;
+    border-radius: 10px;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 
 .card:hover {
@@ -32,4 +34,16 @@
 .carousel-item img {
     max-height: 500px;
     object-fit: contain;
+}
+
+.container {
+    max-width: 1400px;
+}
+
+.form-label {
+    margin-bottom: 4px;
+}
+
+#previewContainer img {
+    transition: transform 0.2s;
 }

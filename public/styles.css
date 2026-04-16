@@ -40,6 +40,10 @@
     max-width: 1400px;
 }
 
+.form-control {
+    border-radius: 8px;
+}
+
 .form-label {
     margin-bottom: 4px;
 }

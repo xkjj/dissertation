@@ -31,13 +31,44 @@ const {
 // Multer setup
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
-        cb(null, path.join(__dirname, 'public/uploads'));
+
+        const itemId = req.params.id;
+
+        const uploadPath = path.join(__dirname, 'uploads', 'items', String(itemId));
+
+        if (!fs.existsSync(uploadPath)) {
+            fs.mkdirSync(uploadPath, { recursive: true });
+        }
+
+        cb(null, uploadPath);
     },
+
     filename: (req, file, cb) => {
-        const uniqueName = Date.now() + path.extname(file.originalname);
-        cb(null, uniqueName);
+        const ext = path.extname(file.originalname);
+        cb(null, `image_${Date.now()}${ext}`);
     }
 });
+
+const itemStorage = multer.diskStorage({
+    destination: (req, file, cb) => {
+
+        const itemId = req.params.id;
+
+        const itemPath = path.join(__dirname, 'uploads', 'items', String(itemId));
+
+        if (!fs.existsSync(itemPath)) {
+            fs.mkdirSync(itemPath, { recursive: true });
+        }
+
+        cb(null, itemPath);
+    },
+    filename: (req, file, cb) => {
+        const unique = `${Date.now()}_${Math.random().toString(36).slice(2)}`;
+        cb(null, `image_${unique}${path.extname(file.originalname)}`);
+    }
+});
+
+const uploadItem = multer({ storage: itemStorage });
 
 const fileFilter = (req, file, cb) => {
     const allowedTypes = /jpeg|jpg|png|webp/;
@@ -50,15 +81,25 @@ const fileFilter = (req, file, cb) => {
 };
 
 const upload = multer({
-    storage,
+    storage: multer.diskStorage({
+        destination: (req, file, cb) => {
+            const tempDir = path.join(__dirname, 'uploads', 'temp');
+            fs.mkdirSync(tempDir, { recursive: true });
+            cb(null, tempDir);
+        },
+        filename: (req, file, cb) => {
+            cb(null, `temp_${Date.now()}_${Math.random().toString(36).slice(2)}${path.extname(file.originalname)}`);
+        }
+    }),
     fileFilter,
-    limits: { fileSize: 2 * 1024 * 1024 } // 2MB
+    limits: { fileSize: 2 * 1024 * 1024 }
 });
 
 //middleware
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 app.use(express.static(path.join(__dirname, 'public')));
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 app.use(express.urlencoded({ extended: true }));
 app.use(sessions({
@@ -127,7 +168,7 @@ app.get('/', (req, res) => {
         return redirectByRole(req.session.user, res);
     }
 
-    res.render('login');
+    res.render('login', {error: null});
 });
 
 //
@@ -142,24 +183,28 @@ app.post('/', (req, res) => {
             `;
 
     db.query(getUserSQL, [username_field], (err, results) => {
-        if (err) return res.send("Database error");
+        if (err) {
+            return res.render('login', { error: 'Database error' });
+        }
 
         if (results.length === 0) {
-            return res.send("Invalid username or password");
+            return res.render('login', { error: 'Invalid username or password' });
         }
 
         const user = results[0];
 
         if (user.is_active === 0) {
-            return res.send("This account has been disabled");
+            return res.render('login', { error: 'This account has been disabled' });
         }
 
         //match hashed password to password entered by user
         bcrypt.compare(password_field, user.password, (err, match) => {
-            if (err) return res.send("Authentication error");
+            if (err) {
+                return res.render('login', { error: 'Authentication error' });
+            }
 
             if (!match) {
-                return res.send("Invalid username or password");
+                return res.render('login', { error: 'Invalid username or password' });
             }
 
             req.session.user = {
@@ -260,6 +305,24 @@ app.post('/createaccount', (req, res) => {
             res.redirect('/usercreated');
                 }
             );
+        });
+    });
+});
+
+app.get('/api/check-username', (req, res) => {
+    const username = (req.query.username || '').toLowerCase().trim();
+
+    if (!username) {
+        return res.json({ available: false });
+    }
+
+    const sql = `SELECT user_id FROM users WHERE username = ?`;
+
+    db.query(sql, [username], (err, results) => {
+        if (err) return res.json({ available: false });
+
+        res.json({
+            available: results.length === 0
         });
     });
 });
@@ -934,11 +997,6 @@ app.post('/items',
 
         const images = req.files || [];
 
-        // Validate
-        if (images.length > 5) {
-            return res.send("Maximum 5 images allowed");
-        }
-
         const assignment = determineInitialStatus(charity_id);
 
         const insertItemSQL = `
@@ -968,26 +1026,43 @@ app.post('/items',
 
                 const itemId = result.insertId;
 
-                if (images.length > 0) {
-
-                    const values = images.map(file => [itemId, file.filename]);
-
-                    db.query(
-                        'INSERT INTO item_images (item_id, filename) VALUES ?',
-                        [values],
-                        err => {
-                            if (err) {
-                                console.error("Image insert failed:", err);
-                                return res.send("Image upload failed");
-                            }
-
-                            res.redirect('/items/my');
-                        }
-                    );
-
-                } else {
-                    res.redirect('/items/my');
+                if (images.length === 0) {
+                    return res.redirect('/items/my');
                 }
+
+                // Move files from temp upload dir to correct item folder
+                const itemDir = path.join(__dirname, 'uploads', 'items', String(itemId));
+                fs.mkdirSync(itemDir, { recursive: true });
+
+                const values = [];
+
+                for (const file of images) {
+                    const newFilename = `image_${Date.now()}_${Math.random().toString(36).slice(2)}.jpg`;
+                    const newPath = path.join(itemDir, newFilename);
+
+                    try {
+                        fs.renameSync(file.path, newPath);
+                        values.push([itemId, `items/${itemId}/${newFilename}`]);
+                    } catch (moveErr) {
+                        console.error("Failed to move file:", moveErr);
+                    }
+                }
+
+                if (values.length === 0) {
+                    return res.redirect('/items/my');
+                }
+
+                db.query(
+                    'INSERT INTO item_images (item_id, filename) VALUES ?',
+                    [values],
+                    err => {
+                        if (err) {
+                            console.error("Image insert failed:", err);
+                            return res.send("Image upload failed");
+                        }
+                        res.redirect('/items/my');
+                    }
+                );
             }
         );
     }
@@ -1390,7 +1465,7 @@ app.get('/items/:id/edit', requireLogin, (req, res) => {
 //update clothing item after editing
 app.post('/items/:id',
 requireLogin,
-upload.array('images', 5), // max 5 images
+uploadItem.array('images', 5), // max 5 images
 (req, res) => {
 
     const itemId = req.params.id;
@@ -1490,22 +1565,22 @@ upload.array('images', 5), // max 5 images
                     if (err) return res.send("Update failed");
 
                     if (newImages.length > 0) {
+                            const values = newImages.map(file => [
+                                itemId,
+                                `items/${itemId}/${file.filename}` 
+                            ]);
 
-                        const values = newImages.map(file => [itemId, file.filename]);
-
-                        db.query(
-                            'INSERT INTO item_images (item_id, filename) VALUES ?',
-                            [values],
-                            err => {
-                                if (err) {
-                                    console.error("Image insert failed:", err);
+                            db.query(
+                                'INSERT INTO item_images (item_id, filename) VALUES ?',
+                                [values],
+                                err => {
+                                    if (err) {
+                                        console.error("Image insert failed:", err);
+                                    }
                                 }
-                            }
-                        );
-                    }
+                            );
+                        }
                     res.redirect('/items/my');
-                    console.log("NEW STATUS:", newStatus);
-                    console.log("NEW CHARITY:", newCharityId);
                 });
             }
         );
@@ -1569,22 +1644,24 @@ upload.array('images', 5), // max 5 images
                         err => {
 
                             if (err) return res.send("Update failed");
-                            
-                            // Delete ONLY after successful update
-                            if (newImages.length > 0) {
 
-                                const values = newImages.map(file => [itemId, file.filename]);
+                               if (newImages.length > 0) {
+                                    const values = newImages.map(file => [
+                                        itemId,
+                                        `items/${itemId}/${file.filename}` 
+                                    ]);
 
-                                db.query(
-                                    'INSERT INTO item_images (item_id, filename) VALUES ?',
-                                    [values],
-                                    err => {
-                                        if (err) {
-                                            console.error("Image insert failed:", err);
+                                    db.query(
+                                        'INSERT INTO item_images (item_id, filename) VALUES ?',
+                                        [values],
+                                        err => {
+                                            if (err) {
+                                                console.error("Image insert failed:", err);
+                                               
+                                            }
                                         }
-                                    }
-                                );
-                            }
+                                    );
+                                }
                             res.redirect('/admin/incoming-items');
                         }
                     );
@@ -1680,22 +1757,21 @@ requireLogin,
                     }
 
                     // delete file from disk
-                    const filePath = path.join(__dirname, 'public/uploads', filename);
+                    const filePath = path.join(__dirname, 'uploads', filename);
 
-                    fs.unlink(filePath, (err) => {
-                        if (err) {
-                            console.error("File delete error:", err);
+                    if (fs.existsSync(filePath)) {
+                            fs.unlink(filePath, err => {
+                                if (err) console.error("File delete error:", err);
+                            });
+                        } else {
+                            console.warn("File not found:", filePath);
                         }
 
-                        res.redirect(`/items/${itemId}/edit`);
-                    });
-
+                    res.sendStatus(200);
                 }
             );
-
         }
     );
-
 });
 
 //admin feature for approving requests for clothing submitted by other users

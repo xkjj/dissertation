@@ -6,75 +6,234 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Sign Up</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <link rel="stylesheet" href="./styles.css">
 </head>
 
-<body>
+<body class="container mt-4">
 
-    <div class="container mt-2 py-4 mb-4 bg-dark rounded-3 text-white">
-        <div class="p-4 mb-4 lc-block">
-          <div class="lc-block">
-            <div editable="rich">
-              <h2 class="fw-bolder display-3">Sign up</h2>
-            </div>
-          </div>
-          <div class="lc-block col-md-8">
-            <div editable="rich">
-              <p class="lead">Create a user account here
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
+<div class="container mt-2 mb-4 bg-dark rounded-3 text-white position-relative">
+    <div class="p-5 bg-dark text-white rounded-3 text-center">
+        <h1 class="display-5 fw-bold">Sign up</h1>
+        <p class="lead">Create an account here</p>
+    </div>
+</div>
 
-    <div class="container">
+    <div class="container d-flex justify-content-center">
+    <div class="card shadow-sm p-4" style="max-width: 700px; width: 100%;">
 
-        <form action="/createaccount" method="POST">
+        <form id ="signupForm" action="/createaccount" method="POST" novalidate>
 
+            <!-- NAME -->
             <div class="row mb-3">
                 <div class="col">
-                    <label for="formGroupExampleInput3" class="form-label">First Name</label>
-                  <input type="text" class="form-control" name="firstname_field" placeholder="First name" pattern="[A-Za-z\s]{2,30}" title="First name must be 2–30 letters" aria-label="First name" required>
+                    <label class="form-label">First Name</label>
+                    <input type="text" class="form-control" name="firstname_field"
+                        placeholder="First name"
+                        pattern="[A-Za-z\s]{2,30}"
+                        title="First name must be 2–30 letters"
+                        required>
+                        <div class="invalid-feedback">First Name is required</div>
                 </div>
+
                 <div class="col">
-                    <label for="formGroupExampleInput3" class="form-label">Surname  </label>
-                  <input type="text" class="form-control" name="surname_field" placeholder="Surname" pattern="[A-Za-z\s]{2,30}" title="Surname must be 2–30 letters" aria-label="Surname" required>
+                    <label class="form-label">Surname</label>
+                    <input type="text" class="form-control" name="surname_field"
+                        placeholder="Surname"
+                        pattern="[A-Za-z\s]{2,30}"
+                        title="Surname must be 2–30 letters"
+                        required>
+                        <div class="invalid-feedback">Surname is required</div>
                 </div>
-              </div>
-            <div class="mb-3">
-                <label for="formGroupExampleInput3" class="form-label">Username</label>
-                <input type="text" class="form-control" name="username_field" placeholder="Enter username" pattern="[A-Za-z0-9_]{4,20}" title="Username must be 4–20 characters (letters, numbers, underscore)" required>
             </div>
+
+            <!-- USERNAME -->
             <div class="mb-3">
-                <label for="formGroupExampleInput4" class="form-label">Password</label>
-                <input type="password" class="form-control" name="password_field" minlength="8" placeholder="Enter password" title="Password must be at least 8 characters" required>
+                <label class="form-label">Username</label>
+                <input type="text" class="form-control" name="username_field"
+                    id = "username"
+                    placeholder="Enter username"
+                    pattern="[A-Za-z0-9_]{4,20}"
+                    title="4–20 characters (letters, numbers, underscore)"
+                    required>
+                    <div class="invalid-feedback">Username is required</div>
+                    <small id="usernameFeedback" class="text-muted"></small>
             </div>
+
+            <!-- PASSWORD -->
+            <div class="mb-4">
+                      <label class="form-label">Password</label>
+
+                      <div class="input-group has-validation">
+                          <input type="password"
+                                class="form-control"
+                                id="passwordInput"
+                                name="password_field"
+                                placeholder="Enter password"
+                                required>
+
+                          <button class="btn btn-outline-secondary" type="button" id="togglePassword">
+                              <i class="bi bi-eye"></i>
+                          </button>
+
+                          <div class="invalid-feedback">Password is required</div>
+                         
+                      </div>
+                      <small id="capsWarning" class="text-danger" style="display: none;">
+                          Caps Lock is ON
+                      </small>
+                  </div>
+
+            <!-- ROLE -->
             <div class="mb-3">
-                <label for="formGroupExampleInput4" class="form-label">Account Type</label>
+                <label class="form-label">Account Type</label>
                 <select class="form-select" name="role_field" required>
-                  <option value="">Select account type</option>
-                  <option value="donor">Donor - Donate clothing</option>
-                  <option value="recipient">Recipient - Request clothing</option>
+                    <option value="">Select account type</option>
+                    <option value="donor">Donor - Donate clothing</option>
+                    <option value="recipient">Recipient - Request clothing</option>
                 </select>
+                <div class="invalid-feedback">Please select an account type</div>
             </div>
+
+            <!-- PHONE -->
             <div class="mb-3">
-                <label for="formGroupExampleInput4" class="form-label">Phone</label>
-                <input type="tel" class="form-control" name="phone_field" placeholder="Enter phone number" pattern="^(\+44\s?7\d{3}|\(?07\d{3}\)?)\s?\d{3}\s?\d{3}$" title="Enter a valid UK mobile number" required>
+                <label class="form-label">Phone</label>
+                <input type="tel" class="form-control" name="phone_field"
+                    placeholder="Enter phone number"
+                    pattern="^(\+44\s?7\d{3}|\(?07\d{3}\)?)\s?\d{3}\s?\d{3}$"
+                    required>
+                    <div class="invalid-feedback">Phone number is required</div>
             </div>
+
+            <!-- ADDRESS -->
             <div class="mb-3">
-                <label for="formGroupExampleInput4" class="form-label">Address</label>
-                <input type="text" class="form-control" name="address_field" placeholder="Enter address" required>
+                <label class="form-label">Address</label>
+                <input type="text" class="form-control" name="address_field"
+                    placeholder="Enter address" 
+                    required>
+                    <div class="invalid-feedback">Address is required</div>
             </div>
+
+            <!-- POSTCODE -->
             <div class="mb-3">
-                <label for="formGroupExampleInput4" class="form-label">Postcode</label>
-                <input type="text" class="form-control" name="postcode_field" placeholder="Enter postcode" pattern="^[A-Z]{1,2}\d[A-Z\d]?\s?\d[A-Z]{2}$" title="Enter a valid UK postcode" required>
+                <label class="form-label">Postcode</label>
+                <input type="text" class="form-control"
+                    name="postcode_field"
+                    placeholder="Enter postcode"
+                    pattern="^[A-Z]{1,2}\d[A-Z\d]?\s?\d[A-Z]{2}$"
+                    required>
+                    <div class="invalid-feedback">Postcode is required</div>
             </div>
-            <div class="mb-3">
-                <button class="btn btn-dark" type="submit">Sign Up</button>
-                <a class="btn btn-outlline-dark" href="/" role="button">Cancel</a>
+
+            <!-- BUTTONS -->
+            <div class="d-grid gap-2">
+                <button class="btn btn-dark">Sign Up</button>
+                <a href="/" class="btn btn-outline-dark">Cancel</a>
             </div>
+
         </form>
+
+    </div>
+</div>
+
+<script>
+const usernameInput = document.getElementById('username');
+const feedback = document.getElementById('usernameFeedback');
+const passwordInput = document.getElementById("passwordInput");
+const toggleBtn = document.getElementById("togglePassword");
+const capsWarning = document.getElementById("capsWarning");
+
+let usernameTimer;
+
+usernameInput.addEventListener('input', () => {
+
+    const username = usernameInput.value.trim().toLowerCase();
+
+    clearTimeout(usernameTimer);
+
+    // Only show error if actually too short
+    if (username.length > 0 && username.length < 4) {
+        feedback.textContent = 'Username must be at least 4 characters';
+        feedback.className = 'text-danger';
+        return;
+    }
+
+    // Clear message if empty
+    if (username.length === 0) {
+        feedback.textContent = '';
+        return;
+    }
+
+    // Run availability check
+    usernameTimer = setTimeout(() => {
+
+        fetch(`/api/check-username?username=${encodeURIComponent(username)}`)
+            .then(res => res.json())
+            .then(data => {
+
+                if (data.available) {
+                    feedback.textContent = '✓ Username available';
+                    feedback.className = 'text-success';
+                } else {
+                    feedback.textContent = '✗ Username already taken';
+                    feedback.className = 'text-danger';
+                }
+
+            });
+
+    }, 400);
+});
+
+//prevent submit if username taken
+document.getElementById('signupForm').addEventListener('submit', (e) => {
+    if (feedback.textContent.includes('taken')) {
+        e.preventDefault();
+        alert('Please choose a different username');
+    }
+});
+
+toggleBtn.addEventListener("click", () => {
+    const isPassword = passwordInput.type === "password";
+
+    passwordInput.type = isPassword ? "text" : "password";
+    toggleBtn.innerHTML = isPassword 
+    ? '<i class="bi bi-eye-slash"></i>' 
+    : '<i class="bi bi-eye"></i>';
+});
+
+// Caps lock detection
+passwordInput.addEventListener("keyup", (event) => {
+    if (event.getModifierState("CapsLock")) {
+        capsWarning.style.display = "block";
+    } else {
+        capsWarning.style.display = "none";
+    }
+});
+
+passwordInput.addEventListener("keydown", (event) => {
+    if (event.getModifierState("CapsLock")) {
+        capsWarning.style.display = "block";
+    } else {
+        capsWarning.style.display = "none";
+    }
+});
+
+(() => {
+    const form = document.getElementById('signupForm');
+
+    form.addEventListener('submit', function (event) {
+
+        if (!form.checkValidity()) {
+            event.preventDefault();
+            event.stopPropagation();
+        }
+
+        form.classList.add('was-validated');
+
+    }, false);
+})();
+</script>
 </body>
 
 </html>

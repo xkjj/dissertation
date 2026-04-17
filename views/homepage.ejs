@@ -41,11 +41,11 @@
         <a href="/items/my" class="btn btn-outline-light mt-2">
             My Listings
         </a>
+    <% } %>
 
-        <a href="/requests/my" class="btn btn-outline-light mt-2">
+     <a href="/requests/my" class="btn btn-outline-light mt-2">
             My Requests
         </a>
-    <% } %>
 
     <% if (user && user.role === 'charity_admin') { %>
         <a href="/admin/charitydashboard" class="btn btn-outline-light mt-2">

@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Charity Admin Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/styles.css">
+</head>
+<body class="container mt-4">
+
+<div class="container mt-2 mb-4 bg-dark rounded-3 text-white position-relative">
+    <div class="p-5 bg-dark text-white rounded-3 text-center">
+        <div class="position-absolute top-0 start-0 p-3 d-flex flex-column align-items-start gap-1">
+            <span class="badge bg-light text-dark px-3 py-2 fs-6">
+                Logged in as: <%= user.username %> (<%= user.role %>)
+            </span>
+            <a href="/logout" class="btn btn-outline-light mt-2">Logout</a>
+        </div>
+
+        <h1 class="display-5 fw-bold">Charity Dashboard</h1>
+        <p class="lead">Manage items and requests for your charity</p>
+
+        <a href="/homepage" class="btn btn-light mt-2 me-2">Homepage</a>
+    </div>
+</div>
+
+<div class="container-fluid px-4">
+    <div class="row">
+
+        <!-- Sidebar -->
+            <div class="col-md-2 sidebar pt-3 pe-3">
+                <p class="text-muted text-uppercase fw-semibold small mb-2 ms-2">Navigation</p>
+                <nav class="nav flex-column">
+
+                    <a href="/admin/charitydashboard"
+                    class="nav-link">
+                        Items
+                    </a>
+
+                    <a href="/admin/recipientrequests"
+                    class="nav-link active">
+                        Requests
+                        <span class="badge bg-secondary"><%= requests.length %></span>
+                    </a>
+
+                    <a href="/admin/incoming-items"
+                    class="nav-link">
+                        Incoming Items
+                    </a>
+
+                    <a href="/admin/charity-items"
+                    class="nav-link">
+                        View Donations
+                    </a>
+
+                </nav>
+            </div>
+
+        <div class="col-md-10 pt-3">
+            <h4 class="mb-4">Recipient Requests</h4>
+        <!-- Filter Tabs -->
+        <ul class="nav nav-tabs mb-4" id="requestTabs">
+            <li class="nav-item">
+                <button class="nav-link active" onclick="filterRequests('all')">
+                    All
+                    <span class="badge bg-secondary ms-1"><%= requests.length %></span>
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link" onclick="filterRequests('pending')">
+                    Pending
+                    <span class="badge bg-warning text-dark ms-1">
+                        <%= requests.filter(r => r.status === 'pending').length %>
+                    </span>
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link" onclick="filterRequests('approved')">
+                    Approved
+                    <span class="badge bg-success ms-1">
+                        <%= requests.filter(r => r.status === 'approved').length %>
+                    </span>
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link" onclick="filterRequests('rejected')">
+                    Rejected
+                    <span class="badge bg-danger ms-1">
+                        <%= requests.filter(r => r.status === 'rejected').length %>
+                    </span>
+                </button>
+            </li>
+        </ul>
+
+        <% if (requests.length === 0) { %>
+            <p>No requests submitted yet.</p>
+        <% } else { %>
+
+            <table class="table table-bordered">
+                <thead>
+                    <tr>
+                        <th>Item</th>
+                        <th>Requested By</th>
+                        <th>Status</th>
+                        <th>Date</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <% requests.forEach(request => { %>
+                        <tr class="request-row" data-status="<%= request.status %>">
+                            <td><%= request.title %></td>
+                            <td><%= request.requester %></td>
+                            <td>
+                                <% if (request.status === 'pending') { %>
+                                    <span class="badge bg-warning text-dark">Pending</span>
+                                    <div class="mt-2">
+                                        <form action="/admin/charitydashboard/<%= request.request_id %>/approve"
+                                            method="POST" class="d-inline">
+                                            <button class="btn btn-sm btn-success">Approve</button>
+                                        </form>
+                                        <form action="/admin/charitydashboard/<%= request.request_id %>/reject"
+                                            method="POST" class="d-inline ms-2">
+                                            <button class="btn btn-sm btn-danger">Reject</button>
+                                        </form>
+                                    </div>
+                                <% } else if (request.status === 'approved') { %>
+                                    <span class="badge bg-success">Approved</span>
+                                <% } else { %>
+                                    <span class="badge bg-danger">Rejected</span>
+                                <% } %>
+                            </td>
+                            <td><%= new Date(request.requested_at).toLocaleDateString('en-GB', {
+                                day: '2-digit', month: 'short', year: 'numeric',
+                                hour: '2-digit', minute: '2-digit'
+                            }) %></td>
+                        </tr>
+                    <% }) %>
+                </tbody>
+            </table>
+            <% } %>
+        </div>
+    </div>
+</div>
+
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+function filterRequests(status) {
+
+    document.querySelectorAll('#requestTabs .nav-link').forEach(btn => {
+        btn.classList.remove('active');
+        if (btn.getAttribute('onclick') === `filterRequests('${status}')`) {
+            btn.classList.add('active');
+        }
+    });
+
+    document.querySelectorAll('.request-row').forEach(row => {
+        row.style.display =
+            status === 'all' || row.dataset.status === status ? '' : 'none';
+    });
+}
+</script>
+</body>
+</html>

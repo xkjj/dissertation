@@ -3,199 +3,237 @@
 <head>
     <title>Edit Clothing Item</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/styles.css">
 </head>
 <body class="container mt-4">
 
-<div class="container mt-2 py-4 mb-4 bg-dark rounded-3 text-white">
-    <div class="p-4">
-        <h2 class="fw-bolder display-5">Edit clothing item</h2>
+<!-- Hero Header -->
+<div class="container mt-2 mb-4 bg-dark rounded-3 text-white position-relative">
+    <div class="p-5 bg-dark text-white rounded-3 text-center">
+        <div class="position-absolute top-0 start-0 p-3 d-flex flex-column align-items-start gap-1">
+            <span class="badge bg-light text-dark px-3 py-2 fs-6">
+                Logged in as: <%= user.username %> (<%= user.role %>)
+            </span>
+            <a href="/logout" class="btn btn-outline-light mt-2">Logout</a>
+        </div>
+
+        <h1 class="display-5 fw-bold">Edit Clothing Item</h1>
         <p class="lead">Make changes to your donated clothing item</p>
+
+        <a href="/items/my" class="btn btn-light mt-2">Back</a>
     </div>
 </div>
 
-<form action="/items/<%= item.item_id %>" method="POST" enctype="multipart/form-data">
+<div class="container mt-4" style="max-width: 800px;">
+    <div class="card shadow-sm p-4">
 
-    <% if (isCharityAdmin) { %>
-        <div class="alert alert-info">
-            Charity Admin: Charity cannot be changed
-        </div>
-    <% } %>
-
-    <div class="mb-3">
-        <label class="form-label">Title</label>
-        <input class="form-control" name="title" value="<%= item.title %>" <%= canFullEdit ? '' : 'disabled' %>>
-    </div>
-
-    <div class="mb-3">
-        <label class="form-label">Description</label>
-        <textarea class="form-control" name="description" <%= canFullEdit ? '' : 'disabled' %>><%= item.description %> </textarea>
-    </div>
-
-    <div class="mb-3">
-        <label class="form-label">Category</label>
-        <select class="form-select" name="category" <%= canFullEdit ? '' : 'disabled' %>>
-            <% ['Men','Women','Children','Unisex'].forEach(cat => { %>
-                <option value="<%= cat %>" <%= item.category === cat ? 'selected' : '' %>>
-                    <%= cat %>
-                </option>
-            <% }) %>
-        </select>
-    </div>
-
-    <div class="mb-3">
-        <label class="form-label">Size</label>
-        <select class="form-select" name="size" <%= canFullEdit ? '' : 'disabled' %>>
-            <% ['XS','S','M','L','XL','XXL'].forEach(size => { %>
-                <option value="<%= size %>" <%= item.size === size ? 'selected' : '' %>>
-                    <%= size %>
-                </option>
-            <% }) %>
-        </select>
-    </div>
-
-    <div class="mb-3">
-        <label class="form-label">Condition</label>
-        <select class="form-select" name="condition_desc" <%= canFullEdit ? '' : 'disabled' %>>
-            <% ['New','Good','Worn'].forEach(cond => { %>
-                <option value="<%= cond %>" <%= item.condition_desc === cond ? 'selected' : '' %>>
-                    <%= cond %>
-                </option>
-            <% }) %>
-        </select>
-    </div>
-
-    <div class="mb-3">
-        <label class="form-label">Assign to Charity Centre</label>
-            <select name="charity_id" class="form-select"<%= (isCharityAdmin || !(donorCanFullyEdit || donorCanChangeCharity)) ? 'disabled' : '' %>>
-                <option value="">No charity assigned</option>
-                <% charity_centres.forEach(charity => { %>
-                    <option value="<%= charity.charity_id %>"
-                        <%= item.charity_id === charity.charity_id ? 'selected' : '' %>>
-                        <%= charity.charity_name %>
-                    </option>
-                <% }) %>
-             </select>
-    </div>
-
-    <div class="mb-3">
-
-        <!-- Show existing images -->
-        <% if (item.images && item.images.length > 0) { %>
-            <div class="mb-3">
-            <label>Current Images:</label>
-
-            <div class="d-flex flex-wrap">
-
-                <% item.images.forEach((img, index) => { %>
-
-                    <div class="position-relative me-2 mb-2">
-
-                        <!-- Image -->
-                        <img src="/uploads/<%= img %>" 
-                            style="width:100px; height:100px; object-fit:cover;"
-                            class="rounded shadow-sm"
-                            data-bs-toggle="modal"
-                            data-bs-target="#imageCarouselModal"
-                            data-index="<%= index %>"
-                            onclick="openCarousel(this)">
-
-                        <!--  Delete Button -->
-                        <% if (canFullEdit) { %>
-                            <button type="button"
-                                    onclick="deleteImage('<%= item.item_id %>', '<%= img %>')"
-                                    class="btn btn-danger btn-sm position-absolute"
-                                    style="top:5px; right:5px; width:22px; height:22px; padding:0; border-radius:50%; z-index:10;">
-                                ✕
-                            </button>
-                        <% } %>
-
-                    </div>
-
-                <% }) %>
-
-                <% } else { %>
-
-            <!-- PLACEHOLDER -->
-            <img src="/uploads/placeholder.jpg"
-                 style="width:100px; height:100px; object-fit:cover;"
-                 class="rounded shadow-sm">
-
-              <% } %>
-
+        <% if (isCharityAdmin) { %>
+            <div class="alert alert-info">
+                Charity Admin: Charity cannot be changed
             </div>
-        </div>
+        <% } %>
 
-        <!-- Upload new image -->
-        <input type="file" name="images" multiple class="form-control" onchange="previewImage(event)" <%= canFullEdit ? '' : 'disabled' %>>
+        <form id="editForm" action="/items/<%= item.item_id %>" method="POST" enctype="multipart/form-data" novalidate>
 
-        <!-- Preview new image -->
-        <div id="preview-container" class="d-flex flex-wrap mt-2"></div>
-    </div>
+            <!-- TITLE -->
+            <div class="mb-3">
+                <label class="form-label fw-semibold">Item Title</label>
+                <input class="form-control" name="title" 
+                       value="<%= item.title %>"
+                       minlength="2" maxlength="100"
+                       <%= canFullEdit ? 'required' : 'disabled' %>>
+                    <div class="invalid-feedback">Please enter a title (2–100 characters)</div>
+            </div>
 
+            <!-- DESCRIPTION -->
+            <div class="mb-3">
+                <label class="form-label fw-semibold">Description</label>
+                <textarea class="form-control" name="description" rows="3"
+                          minlength="5" maxlength="500"
+                          <%= canFullEdit ? 'required' : 'disabled' %>><%= item.description %></textarea>
+                <div class="invalid-feedback">Please enter a description (5–500 characters)</div>
+            </div>
 
-    <button type="submit" class="btn btn-primary">Save Changes</button>
-    <a href="/items/my" class="btn btn-secondary">Cancel</a>
+            <!-- CATEGORY + SIZE -->
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold">Category</label>
+                    <select class="form-select" name="category" 
+                        <%= canFullEdit ? 'required' : 'disabled' %>>
+                        <% if (canFullEdit) { %>
+                            <option value="">Select category</option>
+                        <% } %>
+                        <% ['Men','Women','Children','Unisex'].forEach(cat => { %>
+                            <option value="<%= cat %>" <%= item.category === cat ? 'selected' : '' %>>
+                                <%= cat %>
+                            </option>
+                        <% }) %>
+                    </select>
+                    <div class="invalid-feedback">Please select a category</div>
+                </div>
 
-</form>
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold">Size</label>
+                    <select class="form-select" name="size" 
+                        <%= canFullEdit ? 'required' : 'disabled' %>>
+                        <% if (canFullEdit) { %>
+                            <option value="">Select size</option>
+                        <% } %>
+                        <% ['XS','S','M','L','XL','XXL'].forEach(size => { %>
+                            <option value="<%= size %>" <%= item.size === size ? 'selected' : '' %>>
+                                <%= size %>
+                            </option>
+                        <% }) %>
+                    </select>
+                    <div class="invalid-feedback">Please select a size</div>
+                </div>
+            </div>
 
-<div class="modal fade" id="imageCarouselModal" tabindex="-1">
-    <div class="modal-header border-0">
-    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-    </div>
-        <div class="modal-dialog modal-dialog-centered modal-lg">
-            <div class="modal-content bg-dark">
+            <!-- CONDITION -->
+            <div class="mb-3">
+                <label class="form-label fw-semibold">Condition</label>
+                <select class="form-select" name="condition_desc" 
+                    <%= canFullEdit ? 'required' : 'disabled' %>>
+                    <% if (canFullEdit) { %>
+                        <option value="">Select condition</option>
+                    <% } %>
+                    <% ['New','Good','Worn'].forEach(cond => { %>
+                        <option value="<%= cond %>" <%= item.condition_desc === cond ? 'selected' : '' %>>
+                            <%= cond %>
+                        </option>
+                    <% }) %>
+                </select>
+                <div class="invalid-feedback">Please select a condition</div>
+            </div>
 
-            <div class="modal-body">
+            <!-- CHARITY -->
+            <div class="mb-3">
+                <label class="form-label fw-semibold">Assign to Charity Centre</label>
+                <select name="charity_id" class="form-select"
+                        <%= (isCharityAdmin || !(donorCanFullyEdit || donorCanChangeCharity)) ? 'disabled' : '' %>>
+                    <option value="">No charity assigned</option>
+                    <% charity_centres.forEach(charity => { %>
+                        <option value="<%= charity.charity_id %>"
+                            <%= item.charity_id === charity.charity_id ? 'selected' : '' %>>
+                            <%= charity.charity_name %>
+                        </option>
+                    <% }) %>
+                </select>
+            </div>
 
-                <div id="carouselImages" class="carousel slide" data-bs-ride="false">
+            <!-- IMAGES -->
+            <div class="mb-4">
+                <label class="form-label fw-semibold">Current Images</label>
 
-                <div class="carousel-inner">
-
+                <div class="d-flex flex-wrap gap-2 mb-3">
                     <% if (item.images && item.images.length > 0) { %>
                         <% item.images.forEach((img, index) => { %>
-                    <div class="carousel-item <%= index === 0 ? 'active' : '' %>">
-                        <img src="/uploads/<%= img %>" class="d-block w-100 rounded">
-                    </div>
-                     <% }) %>
+                            <div class="position-relative" data-filename="<%= img %>">
+                                <img src="/uploads/<%= img %>"
+                                     style="width:100px; height:100px; object-fit:cover;"
+                                     class="rounded border shadow-sm"
+                                     data-bs-toggle="modal"
+                                     data-bs-target="#imageCarouselModal"
+                                     data-index="<%= index %>"
+                                     onclick="openCarousel(this)"
+                                     role="button">
+
+                                <% if (canFullEdit) { %>
+                                    <button type="button"
+                                            onclick="deleteImage('<%= item.item_id %>', '<%= img %>')"
+                                            class="btn btn-danger btn-sm position-absolute"
+                                            style="top:4px; right:4px; width:22px; height:22px; padding:0; border-radius:50%; z-index:10;">
+                                        ✕
+                                    </button>
+                                <% } %>
+                            </div>
+                        <% }) %>
+                    <% } else { %>
+                        <img src="/uploads/placeholder.jpg"
+                             style="width:100px; height:100px; object-fit:cover;"
+                             class="rounded border shadow-sm">
                     <% } %>
                 </div>
 
-                <!-- Controls -->
-                <button class="carousel-control-prev" type="button" data-bs-target="#carouselImages" data-bs-slide="prev">
-                    <span class="carousel-control-prev-icon"></span>
-                </button>
+                <% if (canFullEdit) { %>
+                    <label class="form-label fw-semibold">Upload New Images</label>
+                    <input type="file" name="images" multiple class="form-control"
+                           onchange="previewImage(event)">
+                        <small class="text-muted">Max 5 images</small>
+                    <div id="preview-container" class="d-flex flex-wrap gap-2 mt-3"></div>
+                <% } %>
+            </div>
 
-                <button class="carousel-control-next" type="button" data-bs-target="#carouselImages" data-bs-slide="next">
-                    <span class="carousel-control-next-icon"></span>
-                </button>
+            <!-- BUTTONS -->
+            <div class="d-flex justify-content-between align-items-center mt-4">
+                <a href="/items/my" class="btn btn-outline-secondary">Cancel</a>
+                <button type="submit" class="btn btn-dark px-4">Save Changes</button>
+            </div>
 
+        </form>
+    </div>
+</div>
+
+<!-- Image Carousel Modal -->
+<div class="modal fade" id="imageCarouselModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content bg-dark">
+
+            <div class="modal-header border-0">
+                <button type="button" class="btn-close btn-close-white"
+                        data-bs-dismiss="modal"></button>
+            </div>
+
+            <div class="modal-body">
+                <div id="carouselImages" class="carousel slide" data-bs-ride="false">
+                    <div class="carousel-inner">
+                        <% if (item.images && item.images.length > 0) { %>
+                            <% item.images.forEach((img, index) => { %>
+                                <div class="carousel-item <%= index === 0 ? 'active' : '' %>">
+                                    <img src="/uploads/<%= img %>"
+                                         class="d-block w-100 rounded"
+                                         style="max-height:500px; object-fit:contain;">
+                                </div>
+                            <% }) %>
+                        <% } %>
+                    </div>
+
+                    <button class="carousel-control-prev" type="button"
+                            data-bs-target="#carouselImages" data-bs-slide="prev">
+                        <span class="carousel-control-prev-icon"></span>
+                    </button>
+                    <button class="carousel-control-next" type="button"
+                            data-bs-target="#carouselImages" data-bs-slide="next">
+                        <span class="carousel-control-next-icon"></span>
+                    </button>
                 </div>
-
             </div>
 
-            </div>
         </div>
-     </div>
+    </div>
+</div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-
 function previewImage(event) {
     const files = event.target.files;
+    const existingCount = document.querySelectorAll('[data-filename]').length;
+
+    if (existingCount + newFiles.length > 5) {
+        alert(`Maximum 5 images total. You currently have ${existingCount}.`);
+        event.target.value = '';
+        return;
+    }
+    
     const container = document.getElementById('preview-container');
-
-    container.innerHTML = ''; // clear previous previews
-
-    if (!files.length) return;
+    container.innerHTML = '';
 
     Array.from(files).forEach(file => {
-
         if (!file.type.startsWith('image/')) return;
 
         const img = document.createElement('img');
-
         img.src = URL.createObjectURL(file);
-        img.className = "me-2 mb-2 rounded shadow-sm";
+        img.className = "rounded border shadow-sm";
         img.style.width = "100px";
         img.style.height = "100px";
         img.style.objectFit = "cover";
@@ -206,27 +244,44 @@ function previewImage(event) {
 
 function openCarousel(element) {
     const index = element.getAttribute('data-index');
-
     const carousel = document.querySelector('#carouselImages');
     const carouselInstance = bootstrap.Carousel.getOrCreateInstance(carousel);
-
     carouselInstance.to(parseInt(index));
 }
 
 function deleteImage(itemId, filename) {
-
     if (!confirm("Delete this image?")) return;
 
     fetch(`/items/${itemId}/images/delete`, {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ filename })
     })
-    .then(() => location.reload())
+    .then(res => {
+        if (res.ok) {
+            const allWrappers = document.querySelectorAll('[data-filename]');
+            allWrappers.forEach(el => {
+                if (el.dataset.filename === filename) el.remove();
+            });
+        } else {
+            alert("Failed to delete image.");
+        }
+    })
     .catch(err => console.error(err));
 }
+
+// Bootstrap validation
+(() => {
+    const form = document.getElementById('editForm');
+
+    form.addEventListener('submit', function (event) {
+        if (!form.checkValidity()) {
+            event.preventDefault();
+            event.stopPropagation();
+        }
+        form.classList.add('was-validated');
+    }, false);
+})();
 </script>
 </body>
 </html>

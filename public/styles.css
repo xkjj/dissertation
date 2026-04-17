@@ -26,6 +26,12 @@
     transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 
+.card-img-top {
+    height: 200px;
+    object-fit: contain;
+    background-color: #ffffff;
+}
+
 .card:hover {
     transform: scale(1.02);
     transition: 0.2s ease;
@@ -34,6 +40,16 @@
 .carousel-item img {
     max-height: 500px;
     object-fit: contain;
+}
+
+#imageCarouselModal .carousel-control-prev,
+#imageCarouselModal .carousel-control-next {
+    background-color: rgba(0, 0, 0, 0.4);
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    top: 50%;
+    transform: translateY(-50%);
 }
 
 .container {
@@ -51,3 +67,29 @@
 #previewContainer img {
     transition: transform 0.2s;
 }
+
+.sidebar {
+            min-height: calc(100vh - 180px);
+            border-right: 1px solid #dee2e6;
+        }
+
+        .sidebar .nav-link {
+            color: #333;
+            border-radius: 8px;
+            padding: 10px 16px;
+            margin-bottom: 4px;
+            font-weight: 500;
+        }
+
+        .sidebar .nav-link:hover {
+            background-color: #f0f0f0;
+        }
+
+        .sidebar .nav-link.active {
+            background-color: #212529;
+            color: white;
+        }
+
+        .sidebar .nav-link .badge {
+            float: right;
+        }

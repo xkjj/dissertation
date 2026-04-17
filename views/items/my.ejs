@@ -3,6 +3,7 @@
 <head>
     <title>My Clothing Listings</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/styles.css">
 </head>
 <body class="container mt-4">
 
@@ -19,15 +20,48 @@
         <p class="lead">View and make changes to your listed items</p>
 
         <a href="/homepage" class="btn btn-light mt-2 me-2">Back</a>
+        <a href="/items/new" class="btn btn-light mt-2 me-2">+ Add New Item</a>
         <a href="/items/unassigned" class="btn btn-light mt-2 me-2">Unassigned Items</a>
         <a href="/items/to-send" class="btn btn-warning mt-2 me-2">Items to Send</a>
 
     </div>
 </div>
 
-<a href="/items/new" class="btn btn-dark mb-3">Add New Item</a>
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="card text-center shadow-sm border-dark">
+            <div class="card-body">
+                <h3 class="fw-bold"><%= items.length %></h3>
+                <p class="text-muted mb-0">Total Listings</p>
+                <a href="/items/my" class="btn btn-dark btn-sm mt-2">View</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card text-center shadow-sm border-primary">
+            <div class="card-body">
+                <h3 class="fw-bold text-primary"><%= items.filter(i => i.status === 'allocated').length %></h3>
+                <p class="text-muted mb-0">Ready to Send</p>
+                <a href="/items/to-send" class="btn btn-primary btn-sm mt-2">View</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card text-center shadow-sm border-danger">
+            <div class="card-body">
+                <h3 class="fw-bold text-danger"><%= items.filter(i => !i.charity_id).length %></h3>
+                <p class="text-danger mb-0">Unassigned</p>
+                <a href="/items/unassigned" class="btn btn-outline-danger btn-sm mt-2">View</a>
+            </div>
+        </div>
+    </div>
+</div>
 
 <div class="container mt-4">
+    <p class="text-muted mb-3">
+    Showing <%= items.length %> item<%= items.length !== 1 ? 's' : '' %>
+    </p>
+    
     <div class="row g-3">
 
         <% if (items.length === 0) { %>
@@ -35,13 +69,13 @@
         <% } %>
 
         <% items.forEach(item => { %>
-            <div class="col-xl-3 col-lg-3 col-md-4 col-sm-6">
+            <div class="col-xl-3 col-lg-3 col-md-4 col-sm-6 item-card" data-status="<%= item.status %>">
 
                 <div class="card h-100 shadow-sm">
                     <img 
                         src="/uploads/<%= item.images?.[0] || 'placeholder.jpg' %>"
                         class="card-img-top"
-                        style="height:180px; object-fit:cover;">
+                        >
 
                     <div class="card-body d-flex flex-column">
 
@@ -55,7 +89,16 @@
                             <strong>Category:</strong> <%= item.category %><br>
                             <strong>Size:</strong> <%= item.size || 'N/A' %><br>
                             <strong>Charity:</strong> <%= item.charity_name || 'Not assigned' %><br>
-                            <strong>Status:</strong> <%= item.status %>
+                            <%
+                                const statusBadge = {
+                                    approved: 'bg-success',
+                                    assigned: 'bg-warning text-dark',
+                                    delivered: 'bg-dark',
+                                    allocated: 'bg-primary',
+                                    unassigned: 'bg-secondary'
+                                }[item.status] || 'bg-secondary';
+                            %>
+                            <span class="badge <%= statusBadge %> mb-2"><%= item.status %></span>
                         </p>
 
                         <!-- Push buttons to bottom -->
@@ -65,13 +108,13 @@
                                 <div class="mt-auto d-flex gap-2">
 
                                     <a href="/items/<%= item.item_id %>/edit" class="btn btn-sm btn-secondary flex-fill">
-                                        Edit ✏️
+                                        Edit
                                     </a>
 
                                     <form action="/items/<%= item.item_id %>/delete" method="POST" class="flex-fill">
                                         <button class="btn btn-sm btn-outline-danger w-100"
                                                 onclick="return confirm('Delete this item?');">
-                                            Delete 🗑️
+                                            Delete
                                         </button>
                                     </form>
                                 </div>
@@ -81,7 +124,6 @@
                 </div>
             </div>
         <% }) %>
-
     </div>
 </div>
 
@@ -110,6 +152,13 @@ backToTopBtn.addEventListener("click", () => {
         behavior: "smooth"
     });
 });
+
+function filterMyItems(status) {
+    document.querySelectorAll('.item-card').forEach(card => {
+        card.style.display =
+            status === 'all' || card.dataset.status === status ? '' : 'none';
+    });
+}
 </script>
 
 <style>

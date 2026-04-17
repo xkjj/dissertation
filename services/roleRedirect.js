@@ -3,7 +3,7 @@ function redirectByRole(user, res) {
         sys_admin: '/admin/dashboard',
         charity_admin: '/admin/charitydashboard',
         donor: '/items/my',
-        recipient: '/items'
+        recipient: '/homepage'
     };
 
     res.redirect(routes[user.role] || '/homepage');

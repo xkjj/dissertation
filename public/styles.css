@@ -42,6 +42,24 @@
     object-fit: contain;
 }
 
+.carousel-control-next {
+    background-color: rgba(0, 0, 0, 0.4);
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+.carousel-control-prev {
+    background-color: rgba(0, 0, 0, 0.4);
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    top: 50%;
+    transform: translateY(-50%);
+}
+
 #imageCarouselModal .carousel-control-prev,
 #imageCarouselModal .carousel-control-next {
     background-color: rgba(0, 0, 0, 0.4);

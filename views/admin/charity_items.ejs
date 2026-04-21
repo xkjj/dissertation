@@ -73,11 +73,11 @@
                                 </p>
 
                                 <div class="d-flex gap-2 mt-3">
-                                    <form action="/admin/items/<%= item.item_id %>/accept"
+                                    <form action="/admin/charity-items/<%= item.item_id %>/approve"
                                           method="POST" class="flex-fill">
                                         <button class="btn btn-success btn-sm w-100">Accept</button>
                                     </form>
-                                    <form action="/admin/items/<%= item.item_id %>/reject"
+                                    <form action="/admin/charity-items/<%= item.item_id %>/reject"
                                           method="POST" class="flex-fill">
                                         <button class="btn btn-danger btn-sm w-100">Reject</button>
                                     </form>

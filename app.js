@@ -109,6 +109,21 @@ app.use(sessions({
     resave: false
 }));
 
+app.use((req, res, next) => {
+    if (!req.session.user) return next();
+
+    const sql = `SELECT user_id, is_active FROM users WHERE user_id = ?`;
+
+    db.query(sql, [req.session.user.user_id], (err, rows) => {
+        if (err || rows.length === 0 || rows[0].is_active === 0) {
+            return req.session.destroy(() => {
+                res.redirect('/');
+            });
+        }
+        next();
+    });
+});
+
 app.use(express.json());
 app.use(cookieParser());
 
@@ -1201,7 +1216,7 @@ app.get('/items/to-send',
                 return res.send("Error loading items");
             }
 
-            // 🔥 attach images (same pattern you use)
+            // attach images
             db.query(`SELECT item_id, filename FROM item_images`, (err, images) => {
 
                 const imageMap = {};
@@ -1301,6 +1316,61 @@ app.post('/items/:id/assign',
     }
 );
 
+app.get('/items/impact',
+    requireLogin,
+    requireRole('donor'),
+    (req, res) => {
+
+        const userId = req.session.user.user_id;
+
+        const sql = `
+            SELECT
+                ci.item_id,
+                ci.title,
+                ci.description,
+                ci.category,
+                ci.size,
+                ci.condition_desc,
+                ci.created_at,
+                cc.charity_name,
+                ir.requested_at AS delivered_at,
+                (SELECT filename
+                 FROM item_images
+                 WHERE item_id = ci.item_id
+                 LIMIT 1) AS image
+            FROM clothing_items ci
+            LEFT JOIN charity_centres cc ON ci.charity_id = cc.charity_id
+            LEFT JOIN item_requests ir ON ci.item_id = ir.item_id
+                AND ir.status = 'approved'
+            WHERE ci.user_id = ?
+            AND ci.status = 'delivered'
+            ORDER BY ir.requested_at DESC
+        `;
+
+        db.query(sql, [userId], (err, items) => {
+            if (err) {
+                console.error(err);
+                return res.send("Error loading impact data");
+            }
+
+            // Summary stats
+            const totalDelivered = items.length;
+            const charities = [...new Set(items.map(i => i.charity_name).filter(Boolean))];
+            const categories = items.reduce((acc, item) => {
+                acc[item.category] = (acc[item.category] || 0) + 1;
+                return acc;
+            }, {});
+
+            res.render('items/impact', {
+                items,
+                totalDelivered,
+                charitiesCount: charities.length,
+                categories,
+                user: req.session.user
+            });
+        });
+    }
+);
 
 app.get('/items/:id', (req, res) => {
 
@@ -2592,6 +2662,7 @@ requireRole('recipient'),
     });
 
 });
+
 
 // app.get('/user/profile',
 //     requireLogin,

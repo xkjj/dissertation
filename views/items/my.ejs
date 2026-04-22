@@ -23,7 +23,7 @@
         <a href="/items/new" class="btn btn-light mt-2 me-2">+ Add New Item</a>
         <a href="/items/unassigned" class="btn btn-light mt-2 me-2">Unassigned Items</a>
         <a href="/items/to-send" class="btn btn-warning mt-2 me-2">Items to Send</a>
-        <a href="/items/impact" class="btn btn-outline-light mt-2 me-2">My Impact</a>
+        <a href="/items/impact" class="btn btn-success mt-2 me-2">My Impact</a>
 
     </div>
 </div>
@@ -34,7 +34,7 @@
             <div class="card-body">
                 <h3 class="fw-bold"><%= items.length %></h3>
                 <p class="text-muted mb-0">Total Listings</p>
-                <a href="/items/my" class="btn btn-dark btn-sm mt-2">View</a>
+                <a href="/items/my" class="btn btn-secondary btn-sm mt-2">View</a>
             </div>
         </div>
     </div>
@@ -56,6 +56,57 @@
             </div>
         </div>
     </div>
+</div>
+
+<div class="container mt-3 mb-2">
+    <ul class="nav nav-tabs" id="statusTabs">
+        <li class="nav-item">
+            <button class="nav-link active" onclick="filterMyItems('all')">
+                All
+                <span class="badge bg-secondary ms-1"><%= items.length %></span>
+            </button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link" onclick="filterMyItems('approved')">
+                Approved
+                <span class="badge bg-success ms-1">
+                    <%= items.filter(i => i.status === 'approved').length %>
+                </span>
+            </button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link" onclick="filterMyItems('unassigned')">
+                Unassigned
+                <span class="badge bg-danger ms-1">
+                    <%= items.filter(i => i.status === 'unassigned').length %>
+                </span>
+            </button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link" onclick="filterMyItems('assigned')">
+                Assigned
+                <span class="badge bg-warning text-dark ms-1">
+                    <%= items.filter(i => i.status === 'assigned').length %>
+                </span>
+            </button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link" onclick="filterMyItems('allocated')">
+                Ready to Send
+                <span class="badge bg-primary ms-1">
+                    <%= items.filter(i => i.status === 'allocated').length %>
+                </span>
+            </button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link" onclick="filterMyItems('delivered')">
+                Delivered
+                <span class="badge bg-dark ms-1">
+                    <%= items.filter(i => i.status === 'delivered').length %>
+                </span>
+            </button>
+        </li>
+    </ul>
 </div>
 
 <div class="container mt-4">
@@ -155,10 +206,25 @@ backToTopBtn.addEventListener("click", () => {
 });
 
 function filterMyItems(status) {
-    document.querySelectorAll('.item-card').forEach(card => {
-        card.style.display =
-            status === 'all' || card.dataset.status === status ? '' : 'none';
+    // Update active tab
+    document.querySelectorAll('#statusTabs .nav-link').forEach(btn => {
+        btn.classList.remove('active');
+        if (btn.getAttribute('onclick') === `filterMyItems('${status}')`) {
+            btn.classList.add('active');
+        }
     });
+
+    // Show/hide cards
+    let visible = 0;
+    document.querySelectorAll('.item-card').forEach(card => {
+        const match = status === 'all' || card.dataset.status === status;
+        card.style.display = match ? '' : 'none';
+        if (match) visible++;
+    });
+
+    // Update count text
+    document.querySelector('.text-muted.mb-3').textContent =
+        `Showing ${visible} item${visible !== 1 ? 's' : ''}`;
 }
 </script>
 

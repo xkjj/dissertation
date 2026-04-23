@@ -57,7 +57,7 @@
                     pattern="[A-Za-z0-9_]{4,20}"
                     title="4–20 characters (letters, numbers, underscore)"
                     required>
-                    <div class="invalid-feedback">Username is required</div>
+                    <div class="invalid-feedback" id="usernameInvalidFeedback">Username is required</div>
                     <small id="usernameFeedback" class="text-muted"></small>
             </div>
 
@@ -119,11 +119,12 @@
             <div class="mb-3">
                 <label class="form-label">Postcode</label>
                 <input type="text" class="form-control"
+                    id="postcodeInput"
                     name="postcode_field"
                     placeholder="Enter postcode"
                     pattern="^[A-Z]{1,2}\d[A-Z\d]?\s?\d[A-Z]{2}$"
                     required>
-                    <div class="invalid-feedback">Postcode is required</div>
+                    <div class="invalid-feedback" id="postcodeFeedback">Postcode is required</div>
             </div>
 
             <!-- BUTTONS -->
@@ -141,6 +142,7 @@
 const usernameInput = document.getElementById('username');
 const feedback = document.getElementById('usernameFeedback');
 const passwordInput = document.getElementById("passwordInput");
+const postcodeInput = document.getElementById('postcodeInput');
 const toggleBtn = document.getElementById("togglePassword");
 const capsWarning = document.getElementById("capsWarning");
 
@@ -156,12 +158,14 @@ usernameInput.addEventListener('input', () => {
     if (username.length > 0 && username.length < 4) {
         feedback.textContent = 'Username must be at least 4 characters';
         feedback.className = 'text-danger';
+        usernameInput.setCustomValidity('Too short');
         return;
     }
 
     // Clear message if empty
     if (username.length === 0) {
         feedback.textContent = '';
+        usernameInput.setCustomValidity('');
         return;
     }
 
@@ -175,14 +179,38 @@ usernameInput.addEventListener('input', () => {
                 if (data.available) {
                     feedback.textContent = '✓ Username available';
                     feedback.className = 'text-success';
+                    usernameInput.setCustomValidity(''); // mark as valid
+                    document.getElementById('usernameInvalidFeedback').textContent = 'Username is required';
                 } else {
                     feedback.textContent = '✗ Username already taken';
                     feedback.className = 'text-danger';
+                    usernameInput.setCustomValidity('Username already taken'); // mark as invalid
+                    document.getElementById('usernameInvalidFeedback').textContent = '';
                 }
 
             });
 
     }, 400);
+});
+
+document.addEventListener('DOMContentLoaded', () => {
+    postcodeInput.setCustomValidity('required');
+});
+
+postcodeInput.addEventListener('input', () => {
+    const value = postcodeInput.value.trim().toUpperCase();
+    const postcodeRegex = /^[A-Z]{1,2}\d[A-Z\d]?\s?\d[A-Z]{2}$/;
+
+    if (value.length === 0) {
+        postcodeInput.setCustomValidity('required');
+        document.getElementById('postcodeFeedback').textContent = 'Postcode is required';
+    } else if (!postcodeRegex.test(value)) {
+        postcodeInput.setCustomValidity('invalid');
+        document.getElementById('postcodeFeedback').textContent = 'Please enter a valid UK postcode (e.g. BT1 1AA)';
+    } else {
+        postcodeInput.setCustomValidity('');
+        document.getElementById('postcodeFeedback').textContent = 'Postcode is required';
+    }
 });
 
 //prevent submit if username taken

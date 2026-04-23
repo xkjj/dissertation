@@ -13,13 +13,11 @@ const redirectByRole = require('./services/roleRedirect');
 const {
     ITEM_STATUS,
     transitionItem,
-    canChangeStatus,
     deleteItem,
     donorCanDelete,
     donorCanFullyEdit,
     donorCanChangeCharity,
     charityAdminCanEdit,
-    charityAdminCanDelete,
     charityAdminCanMarkReceived,
     charityAdminCanReturn,
     charityAdminCanSend,
@@ -997,6 +995,7 @@ app.get('/api/items', (req, res) => {
 //item creation page
 app.get('/items/new',
     requireLogin,
+    requireRole('donor'),
     (req, res) => {
 
         const sql = `
@@ -1118,6 +1117,7 @@ app.post('/items',
 //page for listing every clothing item uploaded by user
 app.get('/items/my',
     requireLogin,
+    requireRole('donor'),
     (req, res) => {
 
         const sql = `
@@ -1169,6 +1169,7 @@ app.get('/items/my',
 
 app.get('/items/unassigned',
     requireLogin,
+    requireRole('donor'),
     (req, res) => {
 
         const sql = `
@@ -1425,7 +1426,7 @@ app.get('/items/:id', (req, res) => {
 });
 
 //edit items uploaded by user
-app.get('/items/:id/edit', requireLogin, (req, res) => {
+app.get('/items/:id/edit', requireLogin, requireRole('donor', 'sys_admin'), (req, res) => {
 
     const itemId = req.params.id;
     const user = req.session.user;
@@ -1730,7 +1731,7 @@ app.post('/items/:id',
 
                         const currentStatus = rows[0].status;
 
-                        if (currentStatus !== 'received') {
+                        if (!charityAdminCanEdit(currentStatus)) {
                             return res.send("Not allowed");
                         }
 
@@ -2313,7 +2314,7 @@ app.get('/admin/charity-items',
 
 app.post('/admin/charity-items/:id/approve',
     requireLogin,
-    requireRole('charity_admin'),
+    requireRole('charity_admin', 'sys_admin'),
     (req, res) => {
 
         const itemId = req.params.id;
@@ -2357,7 +2358,7 @@ app.post('/admin/charity-items/:id/approve',
 
 app.post('/admin/charity-items/:id/reject',
     requireLogin,
-    requireRole('charity_admin'),
+    requireRole('charity_admin', 'sys_admin'),
     (req, res) => {
 
         const itemId = req.params.id;
@@ -2403,7 +2404,7 @@ app.post('/admin/charity-items/:id/reject',
 
 app.get('/admin/incoming-items',
     requireLogin,
-    requireRole('charity_admin'),
+    requireRole('charity_admin', 'sys_admin'),
     (req, res) => {
 
         const userId = req.session.user.user_id;
@@ -2452,7 +2453,7 @@ app.get('/admin/incoming-items',
 //charity marks item as received
 app.post('/admin/items/:id/received',
     requireLogin,
-    requireRole('charity_admin'),
+    requireRole('charity_admin', 'sys_admin'),
     (req, res) => {
 
         const itemId = req.params.id;
@@ -2485,7 +2486,7 @@ app.post('/admin/items/:id/received',
 //charity sends item to recipient
 app.post('/admin/items/:id/send',
     requireLogin,
-    requireRole('charity_admin'),
+    requireRole('charity_admin', 'sys_admin'),
     (req, res) => {
 
         const itemId = req.params.id;
@@ -2521,7 +2522,7 @@ app.post('/admin/items/:id/send',
 
                 const currentStatus = rows[0].status;
 
-                if (currentStatus !== 'received') {
+                if (!charityAdminCanSend(currentStatus)) {
                     return res.send("Item must be received first");
                 }
 
@@ -2550,7 +2551,7 @@ app.post('/admin/items/:id/send',
 //charity returns item
 app.post('/admin/items/:id/return',
     requireLogin,
-    requireRole('charity_admin'),
+    requireRole('charity_admin', 'sys_admin'),
     (req, res) => {
 
         const itemId = req.params.id;
@@ -2601,7 +2602,7 @@ app.post('/requests/:id/delivered',
 
             const { item_id, status } = rows[0];
 
-            if (status !== 'sent') {
+            if (!recipientCanConfirm(status)) {
                 return res.send("Item not sent yet");
             }
 

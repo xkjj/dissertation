@@ -144,10 +144,6 @@ function charityAdminCanEdit(status) {
     return status === ITEM_STATUS.RECEIVED;
 }
 
-function charityAdminCanDelete(status) {
-    return status === ITEM_STATUS.RECEIVED;
-}
-
 function charityAdminCanMarkReceived(status) {
     return status === ITEM_STATUS.ALLOCATED;
 }
@@ -178,28 +174,14 @@ function deleteItem(currentStatus, role) {
 
 }
 
-function canChangeStatus(role, currentStatus, newStatus) {
-
-    const roleTransitions = {
-        donor: ['assigned', 'unassigned'],
-        charity_admin: ['approved', 'rejected', 'allocated', 'received', 'sent'],
-        recipient: ['delivered', 'never_arrived'],
-        sys_admin: Object.values(ITEM_STATUS)
-    };
-
-    return roleTransitions[role]?.includes(newStatus);
-}
-
 module.exports = {
     ITEM_STATUS,
     transitionItem,
-    canChangeStatus,
     deleteItem,
     donorCanDelete,
     donorCanFullyEdit,
     donorCanChangeCharity,
     charityAdminCanEdit,
-    charityAdminCanDelete,
     charityAdminCanMarkReceived,
     charityAdminCanReturn,
     charityAdminCanSend,

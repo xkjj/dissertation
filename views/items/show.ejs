@@ -8,23 +8,19 @@
 
 <body class="container mt-4">
 
-    <div class="container mt-2 py-4 mb-4 bg-dark rounded-3 text-white">
-    <div class="p-4">
+
+<div class="container mt-2 pb-4 mb-4 bg-dark rounded-3 text-white position-relative">
+    <div class="p-5 bg-dark text-white rounded-3 text-center">
+         <div class="position-absolute top-0 start-0 p-3 d-flex flex-column align-items-start gap-1">
+          <span class="badge bg-light text-dark px-3 py-2 fs-6">
+             Logged in as: <%= user.username %> (<%= user.role %>)
+          </span>
+          <a href="/logout" class="btn btn-outline-light mt-2">Logout</a>
+      </div>
         <h2 class="fw-bolder display-5">Available Clothing</h2>
         <p class="lead">Browse donated clothing items</p>
+         <a href="/items" class="btn btn-outline-light mt-3">Back</a>
     </div>
-    <form method="GET" action="/items" class="mb-4">
-    <div class="input-group">
-        <input 
-            type="text" 
-            name="search" 
-            class="form-control" 
-            placeholder="Search clothing items..."
-            value="<%= typeof search !== 'undefined' ? search : '' %>"
-        >
-        <button class="btn btn-dark">Search</button>
-    </div>
-</form>
 </div>
 
 <div class="row">

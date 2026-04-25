@@ -130,7 +130,6 @@ app.use((req, res, next) => {
     next();
 });
 
-
 const db = mysql.createConnection({
 
     host: "localhost",
@@ -542,44 +541,45 @@ app.get('/admin/charitydashboard',
     requireLogin,
     requireRole('sys_admin', 'charity_admin'),
     (req, res) => {
-
         const userId = req.session.user.user_id;
 
-        // Get charity assigned to this charity admin
-        const charitySQL = `
-            SELECT charity_id
-            FROM charity_admins
-            WHERE user_id = ?
-        `;
+        const charitySQL = `SELECT charity_id FROM charity_admins WHERE user_id = ?`;
 
         db.query(charitySQL, [userId], (err, charityResult) => {
-            if (err) {
-                console.error(err);
-                return res.send("Error loading charity");
-            }
-
-            if (charityResult.length === 0 || !charityResult[0].charity_id) {
+            if (err || charityResult.length === 0 || !charityResult[0].charity_id) {
                 return res.send("No charity assigned");
             }
 
             const charityId = charityResult[0].charity_id;
 
             const itemsSQL = `
-                SELECT *
+                SELECT ci.*,
+                    (SELECT filename FROM item_images WHERE item_id = ci.item_id LIMIT 1) AS image
+                FROM clothing_items ci
+                WHERE ci.charity_id = ? AND ci.status != 'deleted'
+                ORDER BY ci.created_at DESC
+            `;
+
+            // Count pending donations
+            const pendingSQL = `
+                SELECT COUNT(*) AS count
                 FROM clothing_items
-                WHERE charity_id = ?
-                AND status != 'deleted'
+                WHERE charity_id = ? AND status = 'assigned'
             `;
 
             db.query(itemsSQL, [charityId], (err, items) => {
-                if (err) {
-                    console.error(err);
-                    return res.send("Error loading items");
-                }
+                if (err) return res.send("Error loading items");
 
-                res.render('admin/charitydashboard', {
-                    items,
-                    user: req.session.user
+                db.query(pendingSQL, [charityId], (err, pendingResult) => {
+                    if (err) return res.send("Error loading pending count");
+
+                    const pendingDonations = pendingResult[0].count;
+
+                    res.render('admin/charitydashboard', {
+                        items,
+                        user: req.session.user,
+                        pendingDonations
+                    });
                 });
             });
         });
@@ -724,17 +724,30 @@ app.get('/admin/recipientrequests',
                     ir.requested_at,
                     ci.title,
                     ci.status AS item_status,
-                    u.username AS requester
+                    u.username AS requester,
+                    (SELECT filename FROM item_images WHERE item_id = ci.item_id LIMIT 1) AS image
                 FROM item_requests ir
                 JOIN clothing_items ci ON ir.item_id = ci.item_id
                 JOIN users u ON ir.requester_id = u.user_id
                 WHERE ci.charity_id = ?
             `;
+    
+            const pendingSQL = `
+                SELECT COUNT(*) AS count
+                FROM clothing_items
+                WHERE charity_id = ? AND status = 'assigned'
+            `;
 
             db.query(requestsSQL, [charityId], (err, requests) => {
                 if (err) return res.send("Error loading requests");
 
-                res.render('admin/recipientrequests', { requests, user: req.session.user });
+                    db.query(pendingSQL, [charityId], (err, pendingResult) => {
+                        if (err) return res.send("Error loading pending count");
+
+                        const pendingDonations = pendingResult[0].count;
+
+                    res.render('admin/recipientrequests', { requests, user: req.session.user, pendingDonations });
+                });
             });
         });
     }
@@ -1117,7 +1130,7 @@ app.post('/items',
 //page for listing every clothing item uploaded by user
 app.get('/items/my',
     requireLogin,
-    requireRole('donor'),
+    requireRole('donor', 'sys_admin'),
     (req, res) => {
 
         const sql = `
@@ -1169,7 +1182,7 @@ app.get('/items/my',
 
 app.get('/items/unassigned',
     requireLogin,
-    requireRole('donor'),
+    requireRole('donor', 'sys_admin'),
     (req, res) => {
 
         const sql = `
@@ -1189,7 +1202,7 @@ app.get('/items/unassigned',
 
 app.get('/items/to-send',
     requireLogin,
-    requireRole('donor'),
+    requireRole('donor', 'sys_admin'),
     (req, res) => {
 
         const userId = req.session.user.user_id;
@@ -1244,7 +1257,7 @@ app.get('/items/to-send',
 
 app.post('/items/:id/mark-sent',
     requireLogin,
-    requireRole('donor'),
+    requireRole('donor', 'sys_admin'),
     (req, res) => {
 
         const itemId = req.params.id;
@@ -1319,7 +1332,7 @@ app.post('/items/:id/assign',
 
 app.get('/items/impact',
     requireLogin,
-    requireRole('donor'),
+    requireRole('donor', 'sys_admin'),
     (req, res) => {
 
         const userId = req.session.user.user_id;
@@ -1426,7 +1439,10 @@ app.get('/items/:id', (req, res) => {
 });
 
 //edit items uploaded by user
-app.get('/items/:id/edit', requireLogin, requireRole('donor', 'sys_admin'), (req, res) => {
+app.get('/items/:id/edit', 
+    requireLogin, 
+    requireRole('donor', 'sys_admin', 'charity_admin'), 
+    (req, res) => {
 
     const itemId = req.params.id;
     const user = req.session.user;
@@ -1775,7 +1791,7 @@ app.post('/items/:id',
                                         }
                                     );
                                 }
-                                res.redirect('/admin/incoming-items');
+                                res.redirect('/admin/charitydashboard');
                             }
                         );
                     }
@@ -2008,7 +2024,11 @@ app.get('/requests/my',
                 item_requests.request_id,
                 clothing_items.title,
                 item_requests.status,
-                clothing_items.status AS item_status
+                clothing_items.status AS item_status,
+                (SELECT filename FROM item_images WHERE item_id = clothing_items.item_id LIMIT 1) AS image,
+                clothing_items.category,
+                clothing_items.size,
+                clothing_items.condition_desc
             FROM item_requests
             JOIN clothing_items 
                 ON item_requests.item_id = clothing_items.item_id
@@ -2042,10 +2062,14 @@ app.get('/admin/charity-centres',
         `;
 
         const adminsSQL = `
-                SELECT user_id, username, charity_id
-                FROM users
-                WHERE role = 'charity_admin'
-                AND is_active = 1
+                SELECT 
+                    u.user_id, 
+                    u.username, 
+                    ca.charity_id
+                FROM users u
+                LEFT JOIN charity_admins ca ON u.user_id = ca.user_id
+                WHERE u.role = 'charity_admin'
+                AND u.is_active = 1
             `;
 
         db.query(adminsSQL, (err, admins) => {
@@ -2063,12 +2087,11 @@ app.get('/admin/charity-centres',
     }
 );
 
-
 app.get('/admin/charity-centres/new',
     requireLogin,
     requireSystemAdmin,
     (req, res) => {
-        res.render('admin/charity_centres/new');
+        res.render('admin/charity_centres/new', { user: req.session.user });
     }
 );
 
@@ -2103,20 +2126,12 @@ app.get('/admin/charity-centres/:id/edit',
     requireLogin,
     requireSystemAdmin,
     (req, res) => {
-
-        const sql = `
-            SELECT *
-            FROM charity_centres
-            WHERE charity_id = ?
-        `;
-
+        const sql = `SELECT * FROM charity_centres WHERE charity_id = ?`;
         db.query(sql, [req.params.id], (err, results) => {
-            if (err || results.length === 0) {
-                return res.send("Charity centre not found");
-            }
-
+            if (err || results.length === 0) return res.send("Charity centre not found");
             res.render('admin/charity_centres/edit', {
-                centre: results[0]
+                centre: results[0],
+                user: req.session.user
             });
         });
     }
@@ -2265,17 +2280,13 @@ app.get('/admin/charity-items',
         const userId = req.session.user.user_id;
 
         const charitySQL = `
-        SELECT charity_id
-        FROM charity_admins
-        WHERE user_id = ?
-    `;
+            SELECT charity_id
+            FROM charity_admins
+            WHERE user_id = ?
+        `;
 
         db.query(charitySQL, [userId], (err, charityResult) => {
-
-            if (err) {
-                console.error(err);
-                return res.send("Error loading charity");
-            }
+            if (err) return res.send("Error loading charity");
 
             if (charityResult.length === 0 || !charityResult[0].charity_id) {
                 return res.send("No charity assigned");
@@ -2288,29 +2299,39 @@ app.get('/admin/charity-items',
                     ci.*,
                     u.username AS donor,
                     (SELECT filename 
-                    FROM item_images 
-                    WHERE item_id = ci.item_id 
-                    LIMIT 1) AS image
+                     FROM item_images 
+                     WHERE item_id = ci.item_id 
+                     LIMIT 1) AS image
                 FROM clothing_items ci
                 JOIN users u ON ci.user_id = u.user_id
                 WHERE ci.charity_id = ?
                 AND ci.status = 'assigned'
             `;
 
+            const pendingSQL = `
+                SELECT COUNT(*) AS count
+                FROM clothing_items
+                WHERE charity_id = ? AND status = 'assigned'
+            `;
+
             db.query(sql, [charityId], (err, items) => {
+                if (err) return res.send("Error loading items");
 
-                if (err) {
-                    console.error(err);
-                    return res.send("Error loading items");
-                }
+                db.query(pendingSQL, [charityId], (err, pendingResult) => {
+                    if (err) return res.send("Error loading pending count");
 
-                res.render('admin/charity_items', { items });
+                    const pendingDonations = pendingResult[0].count;
 
+                    res.render('admin/charity_items', {
+                        items,
+                        user: req.session.user,
+                        pendingDonations
+                    });
+                });
             });
-
         });
-
-    });
+    }
+);
 
 app.post('/admin/charity-items/:id/approve',
     requireLogin,
@@ -2409,12 +2430,11 @@ app.get('/admin/incoming-items',
 
         const userId = req.session.user.user_id;
 
-        // Get charity_id for this admin
         const charitySQL = `
-        SELECT charity_id
-        FROM charity_admins
-        WHERE user_id = ?
-    `;
+            SELECT charity_id
+            FROM charity_admins
+            WHERE user_id = ?
+        `;
 
         db.query(charitySQL, [userId], (err, result) => {
 
@@ -2425,30 +2445,41 @@ app.get('/admin/incoming-items',
             const charityId = result[0].charity_id;
 
             const itemsSQL = `
-            SELECT
-                clothing_items.*,
-                users.username AS donor
-            FROM clothing_items
-            JOIN users ON clothing_items.user_id = users.user_id
-            WHERE clothing_items.charity_id = ?
-            AND clothing_items.status = 'allocated'
-            ORDER BY clothing_items.created_at DESC
-        `;
+                SELECT 
+                    clothing_items.*, 
+                    users.username AS donor,
+                    (SELECT filename FROM item_images WHERE item_id = clothing_items.item_id LIMIT 1) AS image
+                FROM clothing_items
+                JOIN users ON clothing_items.user_id = users.user_id
+                WHERE clothing_items.charity_id = ?
+                AND clothing_items.status = 'allocated'
+                ORDER BY clothing_items.created_at DESC
+            `;
+
+            const pendingSQL = `
+                SELECT COUNT(*) AS count
+                FROM clothing_items
+                WHERE charity_id = ? AND status = 'assigned'
+            `;
 
             db.query(itemsSQL, [charityId], (err, items) => {
+                if (err) return res.send("Error loading items");
 
-                if (err) {
-                    console.error(err);
-                    return res.send("Error loading items");
-                }
+                db.query(pendingSQL, [charityId], (err, pendingResult) => {
+                    if (err) return res.send("Error loading pending count");
 
-                res.render('admin/incoming_items', { items, user: req.session.user });
+                    const pendingDonations = pendingResult[0].count;
 
+                    res.render('admin/incoming_items', {
+                        items,
+                        user: req.session.user,
+                        pendingDonations
+                    });
+                });
             });
-
         });
-
-    });
+    }
+);
 
 //charity marks item as received
 app.post('/admin/items/:id/received',

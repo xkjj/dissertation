@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html>
+
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -9,139 +10,131 @@
     <link rel="stylesheet" href="/styles.css">
 </head>
 
-<body>
+<body class="container mt-4">
 
-<div class="container mt-2 py-4 mb-4 bg-dark rounded-3 text-white">
-    <div class="p-4">
-        <h2 class="fw-bolder display-5">Charity Centres</h2>
-        <p class="lead">Manage registered charity centres</p>
-    </div>
-</div>
+    <div class="container mt-2 mb-4 bg-dark rounded-3 text-white position-relative">
+        <div class="p-5 bg-dark text-white rounded-3 text-center">
+            <div class="position-absolute top-0 start-0 p-3 d-flex flex-column align-items-start gap-1">
+                <span class="badge bg-light text-dark px-3 py-2 fs-6">
+                    Logged in as: <%= user.username %> (<%= user.role %>)
+                </span>
+                <a href="/logout" class="btn btn-outline-light mt-2">Logout</a>
+            </div>
 
-<div class="container">
+            <h1 class="display-5 fw-bold">Charity Centres</h1>
+            <p class="lead">Manage registered charity centres</p>
 
-    <a href="/admin/charity-centres/new" class="btn btn-dark mb-3">
-        + Add Charity Centre
-    </a>
-
-    <% if (charities.length === 0) { %>
-        <div class="alert alert-info">
-            No charity centres have been created yet.
+            <a href="/admin/dashboard" class="btn btn-outline-light mt-2 me-2">Back to Dashboard</a>
         </div>
-    <% } else { %>
+    </div>
+    <div class="container">
 
-        <table class="table table-bordered align-middle">
-            <thead class="table-dark">
-                <tr>
-                    <th>Name</th>
-                    <th>Email</th>
-                    <th>Postcode</th>
-                    <th>Charity Status</th>
-                    <th>Current Admin</th>
-                    <th>Assign Charity Admin</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                <% charities.forEach(c => { %>
-                    <tr>
-                        <td><%= c.charity_name %></td>
-                        <td><%= c.charity_email %></td>
-                        <td><%= c.charity_postcode %></td>
-                        <td>
-                            <% if (c.is_active) { %>
-                                <span class="badge bg-success">Active</span>
-                            <% } else { %>
-                                <span class="badge bg-danger">Disabled</span>
-                            <% } %>
-                        </td>
-                        <td>
-                            <% if (c.admin_username) { %>
+        <a href="/admin/charity-centres/new" class="btn btn-dark mb-3">
+            + Add Charity Centre
+        </a>
 
-                            <span class="badge bg-success">
-                                <%= c.admin_username %>
-                            </span>
+        <% if (charities.length===0) { %>
+            <div class="alert alert-info">
+                No charity centres have been created yet.
+            </div>
+            <% } else { %>
 
-                            <form action="/admin/charity-centres/remove-admin"
-                                method="POST"
-                                class="d-inline ms-2">
+                <table class="table table-bordered align-middle">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Name</th>
+                            <th>Email</th>
+                            <th>Postcode</th>
+                            <th>Charity Status</th>
+                            <th>Current Admin</th>
+                            <th>Assign Charity Admin</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <% charities.forEach(c=> { %>
+                            <tr>
+                                <td>
+                                    <%= c.charity_name %>
+                                </td>
+                                <td>
+                                    <%= c.charity_email %>
+                                </td>
+                                <td>
+                                    <%= c.charity_postcode %>
+                                </td>
+                                <td class="text-center">
+                                    <% if (c.is_active) { %>
+                                        <span class="badge bg-success">Active</span>
+                                        <% } else { %>
+                                            <span class="badge bg-danger">Disabled</span>
+                                            <% } %>
+                                </td>
+                                <td class="d-flex align-items-center gap-2">
+                                    <% if (c.admin_username) { %>
+                                        <span class="badge bg-success" style="min-width: 90px; text-align: center;">
+                                            <%= c.admin_username %>
+                                        </span>
 
-                                <input type="hidden"
-                                    name="charity_id"
-                                    value="<%= c.charity_id %>">
+                                        <form action="/admin/charity-centres/remove-admin" method="POST" class="m-0">
+                                            <input type="hidden" name="charity_id" value="<%= c.charity_id %>">
+                                            <button class="btn btn-sm btn-outline-danger"
+                                                onclick="return confirm('Remove this admin from the charity?');">
+                                                Remove
+                                            </button>
+                                        </form>
 
-                                <button class="btn btn-sm btn-outline-danger"
-                                        onclick="return confirm('Remove this admin from the charity?');">
-                                    Remove
-                                </button>
+                                        <% } else { %>
+                                            <span class="badge bg-secondary"
+                                                style="min-width: 90px; text-align: center;">
+                                                Not Assigned
+                                            </span>
+                                            <% } %>
+                                </td>
+                                <td>
+                                    <form action="/admin/charity-centres/assign-admin" method="POST" class="d-flex">
 
-                            </form>
+                                        <input type="hidden" name="charity_id" value="<%= c.charity_id %>">
+                                        <select name="user_id" class="form-select form-select-sm me-2"
+                                            <%=c.is_active===0 ? 'disabled' : '' %>
+                                            required>
+                                            <option value="">Select Admin</option>
 
-                        <% } else { %>
+                                            <% admins.forEach(admin=> { %>
 
-                            <span class="badge bg-secondary">
-                                Not Assigned
-                            </span>
+                                                <% const isAssignedElsewhere=admin.charity_id && admin.charity_id
+                                                    !==c.charity_id; %>
 
-                        <% } %>
+                                                    <% if (!isAssignedElsewhere) { %>
+                                                        <option value="<%= admin.user_id %>"
+                                                            <%=c.admin_id===admin.user_id ? 'selected' : '' %>>
+                                                            <%= admin.username %>
+                                                        </option>
+                                                        <% } %>
 
-                        </td>
-                        <td>
-                            <form action="/admin/charity-centres/assign-admin"
-                                method="POST"
-                                class="d-flex">
+                                                            <% }) %>
+                                        </select>
+                                        <button class="btn btn-sm btn-dark" <%=c.is_active===0 ? 'disabled' : '' %>>
+                                            Assign
+                                        </button>
+                                    </form>
 
-                                <input type="hidden"
-                                    name="charity_id"
-                                    value="<%= c.charity_id %>">
-                                <select name="user_id"
-                                        class="form-select form-select-sm me-2"
-                                        <%= c.is_active === 0 ? 'disabled' : '' %>
-                                        required>
-                                    <option value="">Select Admin</option>
+                                </td>
+                                <td>
+                                    <a href="/admin/charity-centres/<%= c.charity_id %>/edit"
+                                        class="btn btn-sm btn-outline-dark">
+                                        Edit
+                                    </a>
+                                </td>
+                            </tr>
+                            <% }) %>
+                    </tbody>
+                </table>
 
-                                    <% admins.forEach(admin => { %>
+                <% } %>
 
-                                        <% 
-                                            const isAssignedElsewhere =
-                                                admin.charity_id &&
-                                                admin.charity_id !== c.charity_id;
-                                        %>
-
-                                        <% if (!isAssignedElsewhere) { %>
-                                            <option value="<%= admin.user_id %>"
-                                                <%= c.admin_id === admin.user_id ? 'selected' : '' %>>
-                                                <%= admin.username %>
-                                            </option>
-                                        <% } %>
-
-                                    <% }) %>
-                                </select>
-                                <button class="btn btn-sm btn-dark"
-                                        <%= c.is_active === 0 ? 'disabled' : '' %>>
-                                    Assign
-                                </button>
-                            </form>
-
-                        </td>
-                        <td>
-                            <a href="/admin/charity-centres/<%= c.charity_id %>/edit"
-                               class="btn btn-sm btn-outline-dark">
-                                Edit
-                            </a>
-                        </td>
-                    </tr>
-                <% }) %>
-            </tbody>
-        </table>
-
-    <% } %>
-
-    <a href="/admin/dashboard" class="btn btn-outline-dark mt-3">
-        Back to Dashboard
-    </a>
-
-</div>
+    </div>
 
 </body>
+
 </html>

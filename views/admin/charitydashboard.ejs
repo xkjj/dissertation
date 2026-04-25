@@ -1,190 +1,211 @@
 <!DOCTYPE html>
 <html>
+
 <head>
     <meta charset="utf-8">
     <title>Charity Admin Dashboard</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="/styles.css">
 </head>
+
 <body class="container mt-4">
 
-<div class="container mt-2 mb-4 bg-dark rounded-3 text-white position-relative">
-    <div class="p-5 bg-dark text-white rounded-3 text-center">
-      <div class="position-absolute top-0 start-0 p-3 d-flex flex-column align-items-start gap-1">
-          <span class="badge bg-light text-dark px-3 py-2 fs-6">
-             Logged in as: <%= user.username %> (<%= user.role %>)
-          </span>
-          <a href="/logout" class="btn btn-outline-light mt-2">Logout</a>
-      </div>
-
-        <h1 class="display-5 fw-bold">Charity Dashboard</h1>
-        <p class="lead">Manage items and requests for your charity</p>
-
-        <a href="/homepage" class="btn btn-light mt-2 me-2">Homepage</a>
-
-    </div>
-</div>
-
-<div class="container-fluid px-4">
-    <div class="row">
-
-    <!-- Sidebar -->
-        <div class="col-md-2 sidebar pt-3 pe-3">
-            <p class="text-muted text-uppercase fw-semibold small mb-2 ms-2">Navigation</p>
-            <nav class="nav flex-column">
-
-                <a href="/admin/charitydashboard"
-                   class="nav-link active">
-                    Items
-                    <span class="badge bg-secondary"><%= items.length %></span>
-                </a>
-
-                <a href="/admin/recipientrequests"
-                   class="nav-link">
-                    Requests
-                </a>
-
-                <a href="/admin/incoming-items"
-                   class="nav-link">
-                    Items to Receive
-                </a>
-
-                <a href="/admin/charity-items"
-                   class="nav-link">
-                    View Donations
-                </a>
-
-            </nav>
-        </div>
-
-    <!-- Clothing Items Section -->
-     <div class="col-md-10 pt-3">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <h4 class="mb-0">Clothing Items</h4>
-                <span class="text-muted" id="item-count"></span>
+    <div class="container mt-2 mb-4 bg-dark rounded-3 text-white position-relative">
+        <div class="p-5 bg-dark text-white rounded-3 text-center">
+            <div class="position-absolute top-0 start-0 p-3 d-flex flex-column align-items-start gap-1">
+                <span class="badge bg-light text-dark px-3 py-2 fs-6">
+                    Logged in as: <%= user.username %> (<%= user.role %>)
+                </span>
+                <a href="/logout" class="btn btn-outline-light mt-2">Logout</a>
             </div>
 
-            <!-- Filter Tabs -->
-            <ul class="nav nav-tabs mb-4" id="statusTabs">
-                <li class="nav-item">
-                    <button class="nav-link active" onclick="filterItems('all')">
-                        All
-                        <span class="badge bg-secondary ms-1"><%= items.length %></span>
-                    </button>
-                </li>
-                <li class="nav-item">
-                    <button class="nav-link" onclick="filterItems('approved')">
-                        Approved
-                        <span class="badge bg-success ms-1">
-                            <%= items.filter(i => i.status === 'approved').length %>
+            <h1 class="display-5 fw-bold">Charity Dashboard</h1>
+            <p class="lead">Manage items and requests for your charity</p>
+
+            <a href="/homepage" class="btn btn-light mt-2 me-2">Homepage</a>
+
+        </div>
+    </div>
+
+    <div class="container-fluid px-4">
+        <div class="row">
+
+            <!-- Sidebar -->
+            <div class="col-md-2 sidebar pt-3 pe-3">
+                <p class="text-muted text-uppercase fw-semibold small mb-2 ms-2">Navigation</p>
+                <nav class="nav flex-column">
+
+                    <a href="/admin/charitydashboard" class="nav-link active">
+                        Items
+                        <span class="badge bg-secondary">
+                            <%= items.length %>
                         </span>
-                    </button>
-                </li>
-                <li class="nav-item">
-                    <button class="nav-link" onclick="filterItems('assigned')">
-                        Assigned
-                        <span class="badge bg-warning text-dark ms-1">
-                            <%= items.filter(i => i.status === 'assigned').length %>
+                    </a>
+
+                    <a href="/admin/recipientrequests" class="nav-link">
+                        Requests
+                    </a>
+
+                    <a href="/admin/incoming-items" class="nav-link">
+                        Items to Receive
+                    </a>
+
+                    <a href="/admin/charity-items" class="nav-link">
+                        View Donations
+                        <span class="badge <%= pendingDonations > 0 ? 'bg-danger' : 'bg-secondary' %>">
+                            <%= pendingDonations %>
                         </span>
-                </li>
-                <li class="nav-item">
-                    <button class="nav-link" onclick="filterItems('received')">
-                        Received
-                        <span class="badge bg-primary ms-1">
-                            <%= items.filter(i => i.status === 'received').length %>
-                        </span>
-                    </button>
-                </li>
-                <li class="nav-item">
-                    <button class="nav-link" onclick="filterItems('delivered')">
-                        Delivered
-                        <span class="badge bg-dark ms-1">
-                            <%= items.filter(i => i.status === 'delivered').length %>
-                        </span>
-                    </button>
-                </li>
-            </ul>
+                    </a>
 
-            <% if (items.length === 0) { %>
-                <p>No items assigned to this charity.</p>
-            <% } %>
+                </nav>
+            </div>
 
-            <div class="row mb-5" id="items-grid">
-                <% items.forEach(item => { %>
-                    <div class="col-md-4 mb-3 item-card" data-status="<%= item.status %>">
-                        <div class="card h-100">
-                            <div class="card-body">
-                                <h5><%= item.title %></h5>
-                                <p><%= item.description %></p>
-                                <%
-                                    const badgeClass = {
-                                        approved: 'bg-success',
-                                        assigned: 'bg-warning text-dark',
-                                        received: 'bg-primary',
-                                        delivered: 'bg-dark'
-                                    }[item.status] || 'bg-secondary';
-                                %>
-                                <span class="badge <%= badgeClass %>">
-                                    <%= item.status %>
-                                </span>
+            <!-- Clothing Items Section -->
+            <div class="col-md-10 pt-3">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h4 class="mb-0">Clothing Items</h4>
+                    <span class="text-muted" id="item-count"></span>
+                </div>
 
-                                <% if (item.status === 'received') { %>
+                <!-- Filter Tabs -->
+                <ul class="nav nav-tabs mb-4 w-100" id="statusTabs" style="display: flex;">
+                    <li class="nav-item flex-fill text-center">
+                        <button class="nav-link w-100 active" onclick="filterItems('all')">
+                            All <span class="badge bg-dark ms-1">
+                                <%= items.length %>
+                            </span>
+                        </button>
+                    </li>
+                    <li class="nav-item flex-fill text-center">
+                        <button class="nav-link w-100" onclick="filterItems('approved')">
+                            Approved <span class="badge bg-success ms-1">
+                                <%= items.filter(i=> i.status === 'approved').length %>
+                            </span>
+                        </button>
+                    </li>
+                    <li class="nav-item flex-fill text-center">
+                        <button class="nav-link w-100" onclick="filterItems('assigned')">
+                            Assigned <span class="badge bg-warning text-dark ms-1">
+                                <%= items.filter(i=> i.status === 'assigned').length %>
+                            </span>
+                        </button>
+                    </li>
+                    <li class="nav-item flex-fill text-center">
+                        <button class="nav-link w-100" onclick="filterItems('received')">
+                            Received <span class="badge bg-info ms-1">
+                                <%= items.filter(i=> i.status === 'received').length %>
+                            </span>
+                        </button>
+                    </li>
+                    <li class="nav-item flex-fill text-center">
+                        <button class="nav-link w-100" onclick="filterItems('sent')">
+                            Sent <span class="badge bg-secondary ms-1">
+                                <%= items.filter(i=> i.status === 'sent').length %>
+                            </span>
+                        </button>
+                    </li>
+                    <li class="nav-item flex-fill text-center">
+                        <button class="nav-link w-100" onclick="filterItems('delivered')">
+                            Delivered <span class="badge bg-primary ms-1">
+                                <%= items.filter(i=> i.status === 'delivered').length %>
+                            </span>
+                        </button>
+                    </li>
+                    <li class="nav-item flex-fill text-center">
+                        <button class="nav-link w-100" onclick="filterItems('never_arrived')">
+                            Never Arrived <span class="badge bg-danger ms-1">
+                                <%= items.filter(i=> i.status === 'never_arrived').length %>
+                            </span>
+                        </button>
+                    </li>
+                </ul>
 
-                                    <div class="mt-2">
-                                        <a href="/items/<%= item.item_id %>/edit"
-                                        class="btn btn-sm btn-secondary">
-                                            Edit
-                                        </a>
 
-                                        <form action="/admin/items/<%= item.item_id %>/send"
-                                            method="POST"
-                                            class="d-inline ms-2">
+                <!-- Items grid -->
+                <% if (items.length===0) { %>
+                    <p>No items assigned to this charity.</p>
+                    <% } %>
 
-                                            <button class="btn btn-sm btn-primary">
-                                                Mark as Sent
-                                            </button>
+                        <div class="row mb-5" id="items-grid">
+                            <% items.forEach(item=> { %>
+                                <div class="col-md-4 mb-3 item-card" data-status="<%= item.status %>">
+                                    <div class="card h-100">
+                                        <img src="/uploads/<%= item.image || 'placeholder.jpg' %>" class="card-img-top">
+                                        <div class="card-body d-flex flex-column">
+                                            <h6 class="fw-bold mb-1">
+                                                <%= item.title %>
+                                            </h6>
+                                            <p class="text-muted small mb-2">
+                                                <%= item.description %>
+                                            </p>
 
-                                        </form>
+                                            <p class="small mb-2">
+                                                <strong>Category:</strong>
+                                                <%= item.category %><br>
+                                                    <strong>Size:</strong>
+                                                    <%= item.size || 'N/A' %><br>
+                                                        <strong>Condition:</strong>
+                                                        <%= item.condition_desc %><br>
+                                            </p>
 
+                                            <% const badgeClass={ approved: 'bg-success' ,
+                                                assigned: 'bg-warning text-dark' , received: 'bg-info' ,
+                                                delivered: 'bg-primary' }[item.status] || 'bg-secondary' ; %>
+                                                <span class="badge <%= badgeClass %> align-self-start mb-2">
+                                                    <%= item.status %>
+                                                </span>
+
+                                                <% if (item.status==='received' ) { %>
+                                                    <div class="mt-auto d-flex gap-2">
+                                                        <a href="/items/<%= item.item_id %>/edit"
+                                                            class="btn btn-sm btn-secondary w-50">
+                                                            Edit
+                                                        </a>
+                                                        <form action="/admin/items/<%= item.item_id %>/send"
+                                                            method="POST" class="w-50">
+                                                            <button class="btn btn-sm btn-primary w-100">
+                                                                Mark as Sent
+                                                            </button>
+                                                        </form>
+                                                    </div>
+                                                    <% } %>
+                                        </div>
                                     </div>
-
-                                <% } %>
-                            </div>
+                                </div>
+                                <% }) %>
                         </div>
-                    </div>
-                <% }) %>
             </div>
         </div>
-    </div>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-<script>
-function filterItems(status) {
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+        <script>
+            function filterItems(status) {
 
-    // Update active tab
-    document.querySelectorAll('#statusTabs .nav-link').forEach(btn => {
-        btn.classList.remove('active');
-        if (btn.getAttribute('onclick') === `filterItems('${status}')`) {
-            btn.classList.add('active');
-        }
-    });
+                // Update active tab
+                document.querySelectorAll('#statusTabs .nav-link').forEach(btn => {
+                    btn.classList.remove('active');
+                    if (btn.getAttribute('onclick') === `filterItems('${status}')`) {
+                        btn.classList.add('active');
+                    }
+                });
 
-    // Show/hide cards
-    const cards = document.querySelectorAll('.item-card');
-    let visible = 0;
+                // Show/hide cards
+                const cards = document.querySelectorAll('.item-card');
+                let visible = 0;
 
-    cards.forEach(card => {
-        const match = status === 'all' || card.dataset.status === status;
-        card.style.display = match ? '' : 'none';
-        if (match) visible++;
-    });
+                cards.forEach(card => {
+                    const match = status === 'all' || card.dataset.status === status;
+                    card.style.display = match ? '' : 'none';
+                    if (match) visible++;
+                });
 
-    // Update count
-    document.getElementById('item-count').textContent =
-        `Showing ${visible} item${visible !== 1 ? 's' : ''}`;
-}
+                // Update count
+                document.getElementById('item-count').textContent =
+                    `Showing ${visible} item${visible !== 1 ? 's' : ''}`;
+            }
 
-// Init count on load
-filterItems('all');
-</script>
+            // Init count on load
+            filterItems('all');
+        </script>
 </body>
+
 </html>

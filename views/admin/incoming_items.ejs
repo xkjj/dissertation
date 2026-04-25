@@ -39,7 +39,10 @@
                     Items to Receive
                     <span class="badge bg-secondary"><%= items.length %></span>
                 </a>
-                <a href="/admin/charity-items" class="nav-link">View Donations</a>
+                <a href="/admin/charity-items" class="nav-link">View Donations <span class="badge <%= pendingDonations > 0 ? 'bg-danger' : 'bg-secondary' %>">
+                            <%= pendingDonations %>
+                        </span>
+                </a>
             </nav>
         </div>
 
@@ -56,6 +59,11 @@
                 <% items.forEach(item => { %>
                     <div class="col-md-4 mb-4">
                         <div class="card h-100 shadow-sm">
+                            <img
+                                    src="<%= item.image ? '/uploads/' + item.image : '/uploads/placeholder.jpg' %>"
+                                    class="card-img-top"
+                                >
+                            
                             <div class="card-body">
 
                                 <h5 class="fw-bold"><%= item.title %></h5>

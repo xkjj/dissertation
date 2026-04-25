@@ -20,9 +20,6 @@
         <p class="lead">View and make changes to your listed items</p>
 
         <a href="/homepage" class="btn btn-light mt-2 me-2">Back</a>
-        <a href="/items/new" class="btn btn-light mt-2 me-2">+ Add New Item</a>
-        <a href="/items/unassigned" class="btn btn-light mt-2 me-2">Unassigned Items</a>
-        <a href="/items/to-send" class="btn btn-warning mt-2 me-2">Items to Send</a>
         <a href="/items/impact" class="btn btn-success mt-2 me-2">My Impact</a>
 
     </div>
@@ -58,7 +55,7 @@
     </div>
 </div>
 
-<div class="container mt-3 mb-2">
+<div class="d-flex justify-content-between align-items-center mb-4">
     <ul class="nav nav-tabs" id="statusTabs">
         <li class="nav-item">
             <button class="nav-link active" onclick="filterMyItems('all')">
@@ -107,6 +104,7 @@
             </button>
         </li>
     </ul>
+            <a href="/items/new" class="btn btn-dark mt-2 me-2">+ Add New Item</a>
 </div>
 
 <div class="container mt-4">
@@ -148,7 +146,7 @@
                                     delivered: 'bg-dark',
                                     allocated: 'bg-primary',
                                     unassigned: 'bg-secondary'
-                                }[item.status] || 'bg-secondary';
+                                }[item.status] || 'bg-danger';
                             %>
                             <span class="badge <%= statusBadge %> mb-2"><%= item.status %></span>
                         </p>

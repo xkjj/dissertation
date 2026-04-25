@@ -1,26 +1,26 @@
-.btn-outline-dark:focus{
-    box-shadow:none;
+.btn-outline-dark:focus {
+    box-shadow: none;
 }
 
 @media screen and (max-width:768px) {
-    .btn-outline-dark{
-        border:none;
-        padding:0;
-        outline:none;
+    .btn-outline-dark {
+        border: none;
+        padding: 0;
+        outline: none;
     }
 
-    .btn-outline-dark:hover{
-        background:none;
-        color:black;
+    .btn-outline-dark:hover {
+        background: none;
+        color: black;
     }
 
 }
 
-.navbar{
+.navbar {
     padding-bottom: 20px;
 }
 
-.card{
+.card {
     margin-bottom: 10px;
     border-radius: 10px;
     transition: transform 0.15s ease, box-shadow 0.15s ease;
@@ -87,27 +87,35 @@
 }
 
 .sidebar {
-            min-height: calc(100vh - 180px);
-            border-right: 1px solid #dee2e6;
-        }
+    min-height: calc(100vh - 180px);
+    border-right: 1px solid #dee2e6;
+}
 
-        .sidebar .nav-link {
-            color: #333;
-            border-radius: 8px;
-            padding: 10px 16px;
-            margin-bottom: 4px;
-            font-weight: 500;
-        }
+.sidebar .nav-link {
+    color: #333;
+    border-radius: 8px;
+    padding: 10px 16px;
+    margin-bottom: 4px;
+    font-weight: 500;
+}
 
-        .sidebar .nav-link:hover {
-            background-color: #f0f0f0;
-        }
+.sidebar .nav-link:hover {
+    background-color: #f0f0f0;
+}
 
-        .sidebar .nav-link.active {
-            background-color: #212529;
-            color: white;
-        }
+.sidebar .nav-link.active {
+    background-color: #212529;
+    color: white;
+}
 
-        .sidebar .nav-link .badge {
-            float: right;
-        }
+.sidebar .nav-link .badge {
+    float: right;
+}
+
+body {
+    background-color: #f7f4f4;
+}
+
+thead th {
+    text-align: center;
+}

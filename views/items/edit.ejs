@@ -7,7 +7,6 @@
 </head>
 <body class="container mt-4">
 
-<!-- Hero Header -->
 <div class="container mt-2 mb-4 bg-dark rounded-3 text-white position-relative">
     <div class="p-5 bg-dark text-white rounded-3 text-center">
         <div class="position-absolute top-0 start-0 p-3 d-flex flex-column align-items-start gap-1">
@@ -35,7 +34,6 @@
 
         <form id="editForm" action="/items/<%= item.item_id %>" method="POST" enctype="multipart/form-data" novalidate>
 
-            <!-- TITLE -->
             <div class="mb-3">
                 <label class="form-label fw-semibold">Item Title</label>
                 <input class="form-control" name="title" 
@@ -45,7 +43,6 @@
                     <div class="invalid-feedback">Please enter a title (2–100 characters)</div>
             </div>
 
-            <!-- DESCRIPTION -->
             <div class="mb-3">
                 <label class="form-label fw-semibold">Description</label>
                 <textarea class="form-control" name="description" rows="3"
@@ -54,7 +51,6 @@
                 <div class="invalid-feedback">Please enter a description (5–500 characters)</div>
             </div>
 
-            <!-- CATEGORY + SIZE -->
             <div class="row mb-3">
                 <div class="col-md-6">
                     <label class="form-label fw-semibold">Category</label>
@@ -89,7 +85,6 @@
                 </div>
             </div>
 
-            <!-- CONDITION -->
             <div class="mb-3">
                 <label class="form-label fw-semibold">Condition</label>
                 <select class="form-select" name="condition_desc" 
@@ -106,7 +101,6 @@
                 <div class="invalid-feedback">Please select a condition</div>
             </div>
 
-            <!-- CHARITY -->
             <div class="mb-3">
                 <label class="form-label fw-semibold">Assign to Charity Centre</label>
                 <select name="charity_id" class="form-select"
@@ -121,7 +115,6 @@
                 </select>
             </div>
 
-            <!-- IMAGES -->
             <div class="mb-4">
                 <label class="form-label fw-semibold">Current Images</label>
 
@@ -164,7 +157,6 @@
                 <% } %>
             </div>
 
-            <!-- BUTTONS -->
             <div class="d-flex justify-content-between align-items-center mt-4">
             <a href="<%= isCharityAdmin ? '/admin/charitydashboard' : '/items/my' %>" class="btn btn-outline-secondary">Cancel</a>                
             <button type="submit" class="btn btn-dark px-4">Save Changes</button>
@@ -174,7 +166,6 @@
     </div>
 </div>
 
-<!-- Image Carousel Modal -->
 <div class="modal fade" id="imageCarouselModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content bg-dark">

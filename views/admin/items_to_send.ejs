@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Items to Send</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/styles.css">
+</head>
+<body class="container mt-4">
+
+<div class="container mt-2 mb-4 bg-dark rounded-3 text-white position-relative">
+    <div class="p-5 bg-dark text-white rounded-3 text-center">
+        <div class="position-absolute top-0 start-0 p-3 d-flex flex-column align-items-start gap-1">
+            <span class="badge bg-light text-dark px-3 py-2 fs-6">
+                Logged in as: <%= user.username %> (<%= user.role %>)
+            </span>
+            <a href="/logout" class="btn btn-outline-light mt-2">Logout</a>
+        </div>
+
+        <h1 class="display-5 fw-bold">Items to Send</h1>
+        <p class="lead">Send received items to their allocated recipients</p>
+
+        <a href="/homepage" class="btn btn-light mt-2 me-2">Homepage</a>
+    </div>
+</div>
+
+<div class="container-fluid px-4">
+    <div class="row">
+
+        <div class="col-md-2 sidebar pt-3 pe-3">
+            <p class="text-muted text-uppercase fw-semibold small mb-2 ms-2">Navigation</p>
+            <nav class="nav flex-column">
+                <a href="/admin/charitydashboard" class="nav-link">Items</a>
+                <a href="/admin/charity-items" class="nav-link">
+                    View Donations
+                    <span class="badge <%= pendingDonations > 0 ? 'bg-danger' : 'bg-secondary' %>">
+                        <%= pendingDonations %>
+                    </span>
+                </a>
+                <a href="/admin/recipientrequests" class="nav-link">
+                    Requests
+                    <span class="badge <%= pendingRecipientRequests > 0 ? 'bg-danger' : 'bg-secondary' %>">
+                        <%= pendingRecipientRequests %>
+                    </span>
+                </a>
+                <a href="/admin/incoming-items" class="nav-link">
+                        Items to Receive
+                    </a>
+                <a href="/admin/items-to-send" class="nav-link active">
+                    Items to Send
+                    <span class="badge <%= items.length > 0 ? 'bg-danger' : 'bg-secondary' %>">
+                        <%= items.length %>
+                    </span>
+                </a>
+            </nav>
+        </div>
+
+        <div class="col-md-10 pt-3">
+
+            <div class="row g-3 mb-4">
+                <div class="col-md-6">
+                    <div class="card text-center shadow-sm border-dark">
+                        <div class="card-body">
+                            <h3 class="fw-bold"><%= items.length %></h3>
+                            <p class="text-muted mb-0">Items Ready to Send</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card text-center shadow-sm border-success">
+                        <div class="card-body">
+                            <h3 class="fw-bold text-success">
+                                <%= items.filter(i => i.recipient_username).length %>
+                            </h3>
+                            <p class="text-muted mb-0">With Allocated Recipient</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h4 class="mb-0">Items to Send to Recipients</h4>
+                <p class="text-muted small mb-0">
+                    <%= items.length %> item<%= items.length !== 1 ? 's' : '' %> awaiting dispatch
+                </p>
+            </div>
+
+            <% if (items.length === 0) { %>
+                <div class="text-center py-5 text-muted">
+                    <p class="fs-5">No items ready to send at this time.</p>
+                </div>
+            <% } else { %>
+                <div class="row g-3 mb-5">
+                    <% items.forEach(item => { %>
+                        <div class="col-xl-4 col-lg-6 col-md-6">
+                            <div class="card h-100 shadow-sm">
+
+                                <img
+                                    src="<%= item.image ? '/uploads/' + item.image : '/uploads/placeholder.jpg' %>"
+                                    class="card-img-top"
+                                >
+
+                                <div class="card-body d-flex flex-column">
+                                    <h6 class="fw-bold mb-1"><%= item.title %></h6>
+                                    <p class="text-muted small mb-2"><%= item.description %></p>
+
+                                    <p class="small mb-2">
+                                        <strong>Category:</strong> <%= item.category %><br>
+                                        <strong>Size:</strong> <%= item.size %><br>
+                                        <strong>Condition:</strong> <%= item.condition_desc %>
+                                    </p>
+
+                                    <% if (item.recipient_username) { %>
+                                        <div class="p-2 rounded mb-3" style="background: #f8f9fa;">
+                                            <p class="small fw-semibold mb-1">Recipient Details</p>
+                                            <p class="small mb-0">
+                                                <strong>Username:</strong> <%= item.recipient_username %><br>
+                                                <strong>Phone:</strong> <%= item.recipient_phone || 'N/A' %><br>
+                                                <strong>Address:</strong> <%= item.recipient_address || 'N/A' %><br>
+                                                <strong>Postcode:</strong> <%= item.recipient_postcode || 'N/A' %>
+                                            </p>
+                                        </div>
+                                    <% } else { %>
+                                        <p class="text-muted small mb-3">⏳ No recipient allocated yet</p>
+                                    <% } %>
+
+                                    <span class="badge bg-primary align-self-start mb-3">Received</span>
+
+                                    <div class="mt-auto d-flex gap-2">
+                                        <a href="/items/<%= item.item_id %>/edit"
+                                           class="btn btn-sm btn-secondary w-50">
+                                            Edit
+                                        </a>
+                                        <form action="/admin/items/<%= item.item_id %>/send"
+                                            method="POST" class="w-50">
+                                            <button class="btn btn-sm btn-primary w-100">
+                                                Mark as Sent
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
+
+                            </div>
+                        </div>
+                    <% }) %>
+                </div>
+            <% } %>
+
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

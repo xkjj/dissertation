@@ -609,6 +609,15 @@ app.get('/admin/charitydashboard',
                 WHERE charity_id = ? AND status = 'assigned'
             `;
 
+            // count items with pending request status - count total shows in sidebar navigation for charity dashboard
+            const pendingRecipientRequestsSQL = `
+                SELECT COUNT(*) AS count
+                FROM item_requests ir
+                JOIN clothing_items ci ON ir.item_id = ci.item_id
+                WHERE ci.charity_id = ?
+                AND ir.status = 'pending'
+            `;
+
             db.query(itemsSQL, [charityId], (err, items) => {
                 if (err) return res.send("Error loading items");
 
@@ -617,11 +626,16 @@ app.get('/admin/charitydashboard',
 
                     const pendingDonations = pendingResult[0].count;
 
-                    // pass items list, current session user and pending donations count for sidebar
-                    res.render('admin/charitydashboard', {
-                        items,
-                        user: req.session.user,
-                        pendingDonations
+                    db.query(pendingRecipientRequestsSQL, [charityId], (err, pendingRequestsResult) => {
+                        if (err) return res.send("Error loading pending requests count");
+                        const pendingRecipientRequests = pendingRequestsResult[0].count;
+
+                        // pass items list, current session user and pending donations + recipient requests count for sidebar
+                        res.render('admin/charitydashboard', {
+                            items,
+                            user: req.session.user,
+                            pendingDonations,
+                            pendingRecipientRequests });
                     });
                 });
             });
@@ -790,25 +804,41 @@ app.get('/admin/recipientrequests',
             `;
     
             // count items with assigned status - count total shows in sidebar navigation for charity dashboard
-            const pendingSQL = `
+            const pendingDonationsSQL = `
                 SELECT COUNT(*) AS count
                 FROM clothing_items
                 WHERE charity_id = ? AND status = 'assigned'
             `;
 
+            // count items with pending request status - count total shows in sidebar navigation for charity dashboard
+            const pendingRecipientRequestsSQL = `
+                SELECT COUNT(*) AS count
+                FROM item_requests ir
+                JOIN clothing_items ci ON ir.item_id = ci.item_id
+                WHERE ci.charity_id = ?
+                AND ir.status = 'pending'
+            `;
+
             db.query(requestsSQL, [charityId], (err, requests) => {
                 if (err) return res.send("Error loading requests");
 
-                    db.query(pendingSQL, [charityId], (err, pendingResult) => {
+                    db.query(pendingDonationsSQL, [charityId], (err, pendingResult) => {
                         if (err) return res.send("Error loading pending count");
 
                         const pendingDonations = pendingResult[0].count;
 
-                    // pass requests list, current session user and pending donations count for sidebar
-                    res.render('admin/recipientrequests', { 
-                        requests, 
-                        user: req.session.user, 
-                        pendingDonations });
+                        db.query(pendingRecipientRequestsSQL, [charityId], (err, pendingRequestsResult) => {
+                            if (err) return res.send("Error loading pending requests count");
+
+                            const pendingRecipientRequests = pendingRequestsResult[0].count;
+
+                        // pass items list, current session user and pending donations + recipient requests count for sidebar
+                        res.render('admin/recipientrequests', { 
+                            requests, 
+                            user: req.session.user, 
+                            pendingDonations,
+                            pendingRecipientRequests });
+                    });        
                 });
             });
         });
@@ -2490,6 +2520,15 @@ app.get('/admin/charity-items',
                 WHERE charity_id = ? AND status = 'assigned'
             `;
 
+            // count items with pending request status - count total shows in sidebar navigation for charity dashboard
+            const pendingRecipientRequestsSQL = `
+                SELECT COUNT(*) AS count
+                FROM item_requests ir
+                JOIN clothing_items ci ON ir.item_id = ci.item_id
+                WHERE ci.charity_id = ?
+                AND ir.status = 'pending'
+            `;
+
             db.query(sql, [charityId], (err, items) => {
                 if (err) return res.send("Error loading items");
 
@@ -2498,10 +2537,16 @@ app.get('/admin/charity-items',
 
                     const pendingDonations = pendingResult[0].count;
 
+                    db.query(pendingRecipientRequestsSQL, [charityId], (err, pendingRequestsResult) => {
+                        if (err) return res.send("Error loading pending requests count");
+                        const pendingRecipientRequests = pendingRequestsResult[0].count;
+
+                    // pass items list, current session user and pending donations + recipient requests count for sidebar
                     res.render('admin/charity_items', {
                         items,
                         user: req.session.user,
-                        pendingDonations
+                        pendingDonations,
+                        pendingRecipientRequests });
                     });
                 });
             });
@@ -2658,6 +2703,15 @@ app.get('/admin/incoming-items',
                 WHERE charity_id = ? AND status = 'assigned'
             `;
 
+            // count items with pending request status - count total shows in sidebar navigation for charity dashboard
+            const pendingRecipientRequestsSQL = `
+                SELECT COUNT(*) AS count
+                FROM item_requests ir
+                JOIN clothing_items ci ON ir.item_id = ci.item_id
+                WHERE ci.charity_id = ?
+                AND ir.status = 'pending'
+            `;
+
             db.query(itemsSQL, [charityId], (err, items) => {
                 if (err) return res.send("Error loading items");
 
@@ -2666,11 +2720,114 @@ app.get('/admin/incoming-items',
 
                     const pendingDonations = pendingResult[0].count;
 
-                    // pass items list, current session user and pending donations count for sidebar
+                        db.query(pendingRecipientRequestsSQL, [charityId], (err, pendingRequestsResult) => {
+                            if (err) return res.send("Error loading pending requests count");
+                            const pendingRecipientRequests = pendingRequestsResult[0].count;
+
+                    // pass items list, current session user and pending donations + recipient requests count for sidebar
                     res.render('admin/incoming_items', {
                         items,
                         user: req.session.user,
-                        pendingDonations
+                        pendingDonations,
+                        pendingRecipientRequests });
+                    });
+                });
+            });
+        });
+    }
+);
+
+// display all items that have been received by the charity and are ready to be sent to their allocated recipient
+app.get('/admin/items-to-send',
+    requireLogin,
+    requireRole('charity_admin', 'sys_admin'),
+    (req, res) => {
+
+        const userId = req.session.user.user_id;
+
+        // check which charity this admin belongs to
+        const charitySQL = `
+            SELECT charity_id
+            FROM charity_admins
+            WHERE user_id = ?
+        `;
+
+        db.query(charitySQL, [userId], (err, result) => {
+
+            if (err || result.length === 0 || !result[0].charity_id) {
+                return res.send("No charity assigned");
+            }
+
+            const charityId = result[0].charity_id;
+
+            // fetch all received items belonging to this charity
+            // join on item_requests to get the approved recipient's details
+            // join on users to get the recipient's username and contact info
+            // only fetches items with an approved request so recipient details are available
+            const itemsSQL = `
+                SELECT 
+                    ci.*,
+                    u_donor.username AS donor,
+                    u_recipient.username AS recipient_username,
+                    u_recipient.phone AS recipient_phone,
+                    u_recipient.address AS recipient_address,
+                    u_recipient.postcode AS recipient_postcode,
+                    ir.request_id,
+                    (SELECT filename FROM item_images WHERE item_id = ci.item_id LIMIT 1) AS image
+                FROM clothing_items ci
+                JOIN users u_donor ON ci.user_id = u_donor.user_id
+                LEFT JOIN item_requests ir ON ci.item_id = ir.item_id
+                    AND ir.status = 'approved'
+                LEFT JOIN users u_recipient ON ir.requester_id = u_recipient.user_id
+                WHERE ci.charity_id = ?
+                AND ci.status = 'received'
+                ORDER BY ci.created_at DESC
+            `;
+
+            // count pending donation requests for the sidebar badge
+            const pendingSQL = `
+                SELECT COUNT(*) AS count
+                FROM clothing_items
+                WHERE charity_id = ? AND status = 'assigned'
+            `;
+
+            // count pending recipient requests for the sidebar badge
+            const pendingRequestsSQL = `
+                SELECT COUNT(*) AS count
+                FROM item_requests ir
+                JOIN clothing_items ci ON ir.item_id = ci.item_id
+                WHERE ci.charity_id = ?
+                AND ir.status = 'pending'
+            `;
+
+            // count allocated items for the Items to Receive sidebar badge
+            const allocatedSQL = `
+                SELECT COUNT(*) AS count
+                FROM clothing_items
+                WHERE charity_id = ?
+                AND status = 'allocated'
+            `;
+
+            db.query(itemsSQL, [charityId], (err, items) => {
+                if (err) return res.send("Error loading items");
+
+                db.query(pendingSQL, [charityId], (err, pendingResult) => {
+                    if (err) return res.send("Error loading pending count");
+
+                    const pendingDonations = pendingResult[0].count;
+
+                    db.query(pendingRequestsSQL, [charityId], (err, pendingRequestsResult) => {
+                        if (err) return res.send("Error loading pending requests count");
+
+                        const pendingRecipientRequests = pendingRequestsResult[0].count;
+
+                            // render items to send with all required sidebar counts
+                            res.render('admin/items_to_send', {
+                                items,
+                                user: req.session.user,
+                                pendingDonations,
+                                pendingRecipientRequests,
+                        });
                     });
                 });
             });

@@ -31,23 +31,29 @@
     <div class="container-fluid px-4">
         <div class="row">
 
-            <!-- Sidebar -->
             <div class="col-md-2 sidebar pt-3 pe-3">
                 <p class="text-muted text-uppercase fw-semibold small mb-2 ms-2">Navigation</p>
                 <nav class="nav flex-column">
                     <a href="/admin/charitydashboard" class="nav-link">Items</a>
-                    <a href="/admin/recipientrequests" class="nav-link">Requests</a>
-                    <a href="/admin/incoming-items" class="nav-link">Items to Receive</a>
                     <a href="/admin/charity-items" class="nav-link active">
                         View Donations
                         <span class="badge <%= pendingDonations > 0 ? 'bg-danger' : 'bg-secondary' %>">
                             <%= pendingDonations %>
                         </span>
                     </a>
+                    <a href="/admin/recipientrequests" class="nav-link">
+                        Requests
+                        <span class="badge <%= pendingRecipientRequests > 0 ? 'bg-danger' : 'bg-secondary' %>">
+                            <%= pendingRecipientRequests %>
+                        </span>
+                    </a>
+                    <a href="/admin/incoming-items" class="nav-link">Items to Receive</a>
+                    <a href="/admin/items-to-send" class="nav-link">
+                        Items to Send
+                    </a>
                 </nav>
             </div>
 
-            <!-- Main Content -->
             <div class="col-md-10 pt-3">
 
                 <h4 class="mb-4">Incoming Donations</h4>
@@ -60,7 +66,7 @@
                             <% items.forEach(item=> { %>
                                 <div class="col-md-4 mb-4">
                                     <div class="card h-100 shadow-sm">
-                                        <!-- Image -->
+
                                         <img src="<%= item.image ? '/uploads/' + item.image : '/uploads/placeholder.jpg' %>"
                                             class="card-img-top">
                                         <div class="card-body">

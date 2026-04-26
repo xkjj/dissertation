@@ -30,7 +30,6 @@
     
     <form onsubmit="return false;" class="mb-2">
 
-    <!-- SEARCH -->
 <div class="d-flex justify-content-center mb-3 px-3">
     <div class="input-group" style="max-width: 500px;">
         <input 
@@ -44,12 +43,10 @@
     </div>
 </div>
 
-    <!-- FILTERS -->
       <div class="mt-4 px-3">
 
         <div class="row g-3 align-items-end">
 
-            <!-- CATEGORY -->
             <div class="col-lg-3 col-md-6">
                 <label class="form-label small text-white">Category</label>
                 <select name="category" class="form-select">
@@ -62,7 +59,6 @@
                 </select>
             </div>
 
-            <!-- SIZE -->
             <div class="col-lg-3 col-md-6">
                 <label class="form-label small text-white">Size</label>
                 <select name="size" class="form-select">
@@ -75,7 +71,6 @@
                 </select>
             </div>
 
-            <!-- CONDITION -->
             <div class="col-lg-3 col-md-6">
                 <label class="form-label small text-white">Condition</label>
                 <select name="condition" class="form-select">
@@ -88,7 +83,6 @@
                 </select>
             </div>
 
-            <!-- SORT -->
             <div class="col-lg-2 col-md-6">
                 <label class="form-label small text-white">Sort</label>
                 <select name="sort" class="form-select">
@@ -98,7 +92,6 @@
                 </select>
             </div>
 
-            <!-- CLEAR -->
             <div class="col-lg-1 d-flex align-items-end">
                 <a href="/items" class="btn btn-outline-light w-100">
                     Clear
@@ -118,7 +111,6 @@
 <div class="container mt-4">
     <div class="row">
 
-        <!-- ITEMS GRID -->
         <div class="col-12">
 
             <% if (items.length === 0) { %>
@@ -196,7 +188,6 @@
 
             </div>
 
-            <!-- PAGINATION -->
             <nav class="mt-4">
                 <ul id="pagination" class="pagination justify-content-center">
 

@@ -37,7 +37,6 @@
             <% } else { %>
 
 
-                <!-- Filter tabs -->
                 <ul class="nav nav-tabs mb-4 w-100" id="requestTabs" style="display: flex;">
                     <li class="nav-item flex-fill text-center">
                         <button class="nav-link w-100 active" onclick="filterRequests('all')">
@@ -93,7 +92,6 @@
                     Showing <%= requests.length %> request<%= requests.length !==1 ? 's' : '' %>
                 </p>
 
-                <!-- Request cards -->
                 <div class="row g-3 mb-5" id="requestsGrid">
                     <% requests.forEach(request=> { %>
 

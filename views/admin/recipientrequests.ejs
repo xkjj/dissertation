@@ -8,7 +8,6 @@
 </head>
 <body class="container mt-4">
 
-<!-- Hero Banner -->
 <div class="container mt-2 mb-4 bg-dark rounded-3 text-white position-relative">
     <div class="p-5 bg-dark text-white rounded-3 text-center">
         <div class="position-absolute top-0 start-0 p-3 d-flex flex-column align-items-start gap-1">
@@ -28,29 +27,31 @@
 <div class="container-fluid px-4">
     <div class="row">
 
-        <!-- Sidebar -->
         <div class="col-md-2 sidebar pt-3 pe-3">
             <p class="text-muted text-uppercase fw-semibold small mb-2 ms-2">Navigation</p>
             <nav class="nav flex-column">
                 <a href="/admin/charitydashboard" class="nav-link">Items</a>
-                <a href="/admin/recipientrequests" class="nav-link active">
-                    Requests
-                    <span class="badge bg-secondary ms-1"><%= requests.length %></span>
-                </a>
-                <a href="/admin/incoming-items" class="nav-link">Items to Receive</a>
-                <a href="/admin/charity-items" class="nav-link">
+                 <a href="/admin/charity-items" class="nav-link">
                     View Donations
                     <span class="badge <%= pendingDonations > 0 ? 'bg-danger' : 'bg-secondary' %>">
                         <%= pendingDonations %>
                     </span>
                 </a>
+                <a href="/admin/recipientrequests" class="nav-link active">
+                    Requests
+                    <span class="badge <%= pendingRecipientRequests > 0 ? 'bg-danger' : 'bg-secondary' %>">
+                        <%= pendingRecipientRequests %>
+                    </span>
+                </a>
+                <a href="/admin/incoming-items" class="nav-link">Items to Receive</a>
+                <a href="/admin/items-to-send" class="nav-link">
+                    Items to Send
+                </a>
             </nav>
         </div>
 
-        <!-- Main Content -->
         <div class="col-md-10 pt-3">
 
-            <!-- Filter tabs -->
             <ul class="nav nav-tabs mb-4" id="requestTabs">
                 <li class="nav-item">
                     <button class="nav-link active" onclick="filterRequests('all')">

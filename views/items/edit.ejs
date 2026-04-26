@@ -215,20 +215,24 @@
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script>
+// generate thumbnail previews for newly selected images in edit form
 function previewImage(event) {
     const files = event.target.files;
-    const existingCount = document.querySelectorAll('[data-filename]').length;
+    const existingCount = document.querySelectorAll('[data-filename]').length; // count images already saved to this item
 
     if (existingCount + newFiles.length > 5) {
-        alert(`Maximum 5 images total. You currently have ${existingCount}.`);
+        alert(`Maximum 5 images total. You currently have ${existingCount}.`); // enforces 5 image maximum across both existing and new images
         event.target.value = '';
         return;
     }
     
     const container = document.getElementById('preview-container');
-    container.innerHTML = '';
+    container.innerHTML = ''; // clear previously rendered preview before re-rendering
 
+    // thumbnail preview for each selected files
     Array.from(files).forEach(file => {
+
+        // skip any files that are not images
         if (!file.type.startsWith('image/')) return;
 
         const img = document.createElement('img');
@@ -242,13 +246,17 @@ function previewImage(event) {
     });
 }
 
+// open image carousel modal at specified image
 function openCarousel(element) {
-    const index = element.getAttribute('data-index');
+    const index = element.getAttribute('data-index'); // data-index attribute used on clicked thumbnail to jump to correct slide
     const carousel = document.querySelector('#carouselImages');
-    const carouselInstance = bootstrap.Carousel.getOrCreateInstance(carousel);
-    carouselInstance.to(parseInt(index));
+    const carouselInstance = bootstrap.Carousel.getOrCreateInstance(carousel); // get/create bootstrap carousel instance for modal
+    carouselInstance.to(parseInt(index)); // navigate directly to click image's slide
 }
 
+// delete single image via AJAX request
+// removes both database record and file from disk on the server
+// removes thumbnail from UI without full page reload
 function deleteImage(itemId, filename) {
     if (!confirm("Delete this image?")) return;
 
@@ -259,7 +267,7 @@ function deleteImage(itemId, filename) {
     })
     .then(res => {
         if (res.ok) {
-            const allWrappers = document.querySelectorAll('[data-filename]');
+            const allWrappers = document.querySelectorAll('[data-filename]'); // on success, find and remove thumbnail wrapper from DOM by matching data-filename to deleted filename
             allWrappers.forEach(el => {
                 if (el.dataset.filename === filename) el.remove();
             });
@@ -270,7 +278,7 @@ function deleteImage(itemId, filename) {
     .catch(err => console.error(err));
 }
 
-// Bootstrap validation
+// bootstrap validation
 (() => {
     const form = document.getElementById('editForm');
 

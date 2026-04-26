@@ -97,18 +97,39 @@
                 <div class="row g-3 mb-5" id="requestsGrid">
                     <% requests.forEach(request=> { %>
 
-                        <% const filterStatus=request.item_status==='sent' ? 'sent' : request.item_status==='delivered'
-                            ? 'delivered' : request.item_status==='never_arrived' ? 'rejected' :
-                            request.status==='approved' ? 'approved' : request.status==='pending' ? 'pending'
-                            : 'rejected' ; const accentColor=filterStatus==='pending' ? '#ffc107' :
-                            filterStatus==='approved' ? '#198754' : filterStatus==='sent' ? '#0d6efd' :
-                            filterStatus==='delivered' ? '#212529' : '#dc3545' ; const
-                            badgeClass=filterStatus==='pending' ? 'bg-warning text-dark' : filterStatus==='approved'
-                            ? 'bg-success' : filterStatus==='sent' ? 'bg-primary' : filterStatus==='delivered'
-                            ? 'bg-dark' : 'bg-danger' ; const badgeLabel=request.item_status==='sent' ? 'Sent' :
-                            request.item_status==='delivered' ? 'Delivered' : request.item_status==='never_arrived'
-                            ? 'Never Arrived' : request.status==='approved' ? 'Approved' : request.status==='pending'
-                            ? 'Pending' : 'Rejected' ; %>
+                        <%
+                            // filter tab this card belongs to based on item and request status
+                            const filterStatus =
+                                request.item_status === 'sent'          ? 'sent'      :
+                                request.item_status === 'delivered'     ? 'delivered' :
+                                request.item_status === 'never_arrived' ? 'rejected'  :
+                                request.status     === 'approved'       ? 'approved'  :
+                                request.status     === 'pending'        ? 'pending'   : 'rejected';
+
+                            // colour of the top border accent on each card
+                            const accentColor =
+                                filterStatus === 'pending'   ? '#ffc107' :
+                                filterStatus === 'approved'  ? '#198754' :
+                                filterStatus === 'sent'      ? '#0d6efd' :
+                                filterStatus === 'delivered' ? '#212529' : '#dc3545';
+
+                            // boostrap badge call for status label
+                            const badgeClass = {
+                                pending:   'bg-warning text-dark',
+                                approved:  'bg-success',
+                                sent:      'bg-primary',
+                                delivered: 'bg-dark',
+                                rejected:  'bg-danger'
+                            }[filterStatus] || 'bg-secondary';
+
+                            // human-readable label
+                            const badgeLabel =
+                                request.item_status === 'sent'          ? 'Sent'          :
+                                request.item_status === 'delivered'     ? 'Delivered'     :
+                                request.item_status === 'never_arrived' ? 'Never Arrived' :
+                                request.status      === 'approved'      ? 'Approved'      :
+                                request.status      === 'pending'       ? 'Pending'       : 'Rejected';
+                             %>
 
                             <div class="col-xl-3 col-lg-4 col-md-6 request-card" data-status="<%= filterStatus %>">
                                 <div class="card h-100 shadow-sm">
@@ -172,10 +193,13 @@
 
                 <% } %>
     </div>
-
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+        // filter request cards by status when a tab is clicked
         function filterRequests(status) {
+
+            // update the active tab - remove active from all tabs first
+            // then re-apply to tab that matches selected status
             document.querySelectorAll('#requestTabs .nav-link').forEach(btn => {
                 btn.classList.remove('active');
                 if (btn.getAttribute('onclick') === `filterRequests('${status}')`) {
@@ -183,6 +207,8 @@
                 }
             });
 
+            // show/hide each request card based on whether its data-status attribute
+            // matches selected filter - show all cards if all is selected
             let visible = 0;
             document.querySelectorAll('.request-card').forEach(card => {
                 const match = status === 'all' || card.dataset.status === status;
@@ -190,10 +216,11 @@
                 if (match) visible++;
             });
 
+            // update count text below tabs to reflect amount of cards currently displayed
             document.getElementById('requestCount').textContent =
                 `Showing ${visible} request${visible !== 1 ? 's' : ''}`;
         }
-    </script>
+</script>
 
 </body>
 

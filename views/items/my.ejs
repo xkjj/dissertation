@@ -184,9 +184,10 @@
     </button>
 
 <script>
-const backToTopBtn = document.getElementById("backToTopBtn");
+const backToTopBtn = document.getElementById("backToTopBtn"); // reference to back to top button
 
-// Show button when scrolling
+// show button when scrolled more than 300px
+// hide again when scrolled back towards top
 window.addEventListener("scroll", () => {
     if (window.scrollY > 300) {
         backToTopBtn.style.display = "block";
@@ -195,7 +196,7 @@ window.addEventListener("scroll", () => {
     }
 });
 
-// Smooth scroll to top
+// smooth scroll to top when button is clicked
 backToTopBtn.addEventListener("click", () => {
     window.scrollTo({
         top: 0,
@@ -203,8 +204,9 @@ backToTopBtn.addEventListener("click", () => {
     });
 });
 
+// filter item cards by status when tab is clicked
 function filterMyItems(status) {
-    // Update active tab
+    // update active tab
     document.querySelectorAll('#statusTabs .nav-link').forEach(btn => {
         btn.classList.remove('active');
         if (btn.getAttribute('onclick') === `filterMyItems('${status}')`) {
@@ -212,7 +214,7 @@ function filterMyItems(status) {
         }
     });
 
-    // Show/hide cards
+    // show/hide cards
     let visible = 0;
     document.querySelectorAll('.item-card').forEach(card => {
         const match = status === 'all' || card.dataset.status === status;
@@ -220,7 +222,7 @@ function filterMyItems(status) {
         if (match) visible++;
     });
 
-    // Update count text
+    // update count text
     document.querySelector('.text-muted.mb-3').textContent =
         `Showing ${visible} item${visible !== 1 ? 's' : ''}`;
 }

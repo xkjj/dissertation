@@ -232,9 +232,11 @@
 </div>
 
 <script>
-let debounceTimer;
-let currentPage = 1;
+let debounceTimer; // debounce search and filter input events
+let currentPage = 1; // track current page number
 
+// collect current values of all search, filter and sorts
+// return as object to be used a query params
 function getFilters() {
     return {
         search: document.querySelector('input[name="search"]').value,
@@ -246,11 +248,13 @@ function getFilters() {
     };
 }
 
+// fetch items from the API using the current filter values
 function fetchItems() {
 
-    const params = new URLSearchParams(getFilters());
-    history.replaceState(null, '', '/items?' + params.toString());
+    const params = new URLSearchParams(getFilters()); // updates the browser URL to reflect the active filters without a full page reload
+    history.replaceState(null, '', '/items?' + params.toString()); // update the browser URL with the current filters so the page is bookmarkable
 
+    // call api endpoint from app.js and re-render items grid and pagination on response
     fetch('/api/items?' + params.toString())
         .then(res => res.json())
         .then(data => {
@@ -259,8 +263,10 @@ function fetchItems() {
         });
 }
 
+// render items grid with results returned from API
 function renderItems(items) {
 
+    // only show donor username if logged in as charity or system admin
     const showDonor = window.currentUserRole === 'charity_admin' ||
                       window.currentUserRole === 'sys_admin';
     const container = document.getElementById('itemsContainer');
@@ -272,27 +278,28 @@ function renderItems(items) {
 
     container.innerHTML = items.map(item => {
 
-        const img = item.images.length > 0 
-            ? item.images[0] 
-            : 'placeholder.jpg';
+        // use first image available, otherwise use placeholder
+        const img = item.images.length > 0 ? item.images[0] : 'placeholder.jpg';
 
+        // determine correct button to display based on item status
         let button = '';
 
         if (item.status !== 'approved') {
-            button = `<button class="btn btn-sm btn-secondary w-100" disabled>Unavailable</button>`;
+            button = `<button class="btn btn-sm btn-secondary w-100" disabled>Unavailable</button>`; // item unavailable for request
 
         } else if (item.owner_id && item.owner_id === window.currentUserId) {
-            button = `<button class="btn btn-sm btn-info w-100" disabled>Your Item</button>`;
+            button = `<button class="btn btn-sm btn-info w-100" disabled>Your Item</button>`; // logged-in user is the donor of this item
 
         } else if (item.request_status === 'approved') {
-            button = `<button class="btn btn-sm btn-outline-success w-100" disabled>Approved</button>`;
+            button = `<button class="btn btn-sm btn-outline-success w-100" disabled>Approved</button>`; // request has been approved
 
         } else if (item.request_status === 'pending') {
-            button = `<button class="btn btn-sm btn-outline-warning w-100" disabled>Pending</button>`;
+            button = `<button class="btn btn-sm btn-outline-warning w-100" disabled>Pending</button>`; // request submitted and is pending
 
         } else if (item.request_status === 'rejected') {
-            button = `<button class="btn btn-sm btn-outline-danger w-100" disabled>Rejected</button>`;
+            button = `<button class="btn btn-sm btn-outline-danger w-100" disabled>Rejected</button>`; // request rejected
 
+        // no existing request - show request button     
         } else {
             button = `
                 <form action="/requests" method="POST">
@@ -302,6 +309,7 @@ function renderItems(items) {
             `;
         }
 
+        // return HTML for a single item card
         return `
         <div class="col-xl-3 col-lg-3 col-md-4 col-sm-6">
             <a href="/items/${item.item_id}" class="text-decoration-none text-dark">
@@ -337,18 +345,19 @@ function renderItems(items) {
     }).join('');
 }
 
+// render pagination controls based on total pages and current page
 function renderPagination(totalPages, page) {
 
     const pagination = document.getElementById('pagination');
 
-    if (!pagination || totalPages <= 1) {
+    if (!pagination || totalPages <= 1) { // hide pagination if there is only one page or no pagination element exists
         pagination.innerHTML = '';
         return;
     }
 
     let html = '';
 
-    // Previous
+    // previous button - disabled if on first page
     html += `
     <li class="page-item ${page === 1 ? 'disabled' : ''}">
         <a class="page-link" href="#" onclick="goToPage(${page - 1}); return false;">
@@ -356,7 +365,7 @@ function renderPagination(totalPages, page) {
         </a>
     </li>`;
 
-    // Pages
+    // page number buttons - highlighted on current page
     for (let i = 1; i <= totalPages; i++) {
         html += `
         <li class="page-item ${i === page ? 'active' : ''}">
@@ -366,7 +375,7 @@ function renderPagination(totalPages, page) {
         </li>`;
     }
 
-    // Next
+    // next button - disabled if on last page
     html += `
     <li class="page-item ${page === totalPages ? 'disabled' : ''}">
         <a class="page-link" href="#" onclick="goToPage(${page + 1}); return false;">
@@ -377,11 +386,13 @@ function renderPagination(totalPages, page) {
     pagination.innerHTML = html;
 }
 
+// navigate to specific page and re-fetch items
 function goToPage(page) {
     currentPage = page;
     fetchItems();
 }
 
+// event listeners to all search and filter inputs once DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
 
     const inputs = document.querySelectorAll(
@@ -389,16 +400,16 @@ document.addEventListener('DOMContentLoaded', () => {
     );
 
     inputs.forEach(input => {
-        const eventType = input.tagName === 'SELECT' ? 'change' : 'input';
+        const eventType = input.tagName === 'SELECT' ? 'change' : 'input'; // use change for select dropdowns and input for text fields
         input.addEventListener(eventType, () => {
 
-            currentPage = 1; // reset page on filter change
+            currentPage = 1; // reset page to 1 on filter change
 
             clearTimeout(debounceTimer);
 
             debounceTimer = setTimeout(() => {
                 fetchItems();
-            }, 300);
+            }, 300); // debounce fetch call by 300ms to avoid firing on every keystroke
         });
     });
 

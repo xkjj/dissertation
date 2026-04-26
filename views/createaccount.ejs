@@ -25,7 +25,6 @@
 
         <form id ="signupForm" action="/createaccount" method="POST" novalidate>
 
-            <!-- NAME -->
             <div class="row mb-3">
                 <div class="col">
                     <label class="form-label">First Name</label>
@@ -48,7 +47,6 @@
                 </div>
             </div>
 
-            <!-- USERNAME -->
             <div class="mb-3">
                 <label class="form-label">Username</label>
                 <input type="text" class="form-control" name="username_field"
@@ -61,7 +59,6 @@
                     <small id="usernameFeedback" class="text-muted"></small>
             </div>
 
-            <!-- PASSWORD -->
             <div class="mb-4">
                       <label class="form-label">Password</label>
 
@@ -85,7 +82,6 @@
                       </small>
                   </div>
 
-            <!-- ROLE -->
             <div class="mb-3">
                 <label class="form-label">Account Type</label>
                 <select class="form-select" name="role_field" required>
@@ -96,7 +92,6 @@
                 <div class="invalid-feedback">Please select an account type</div>
             </div>
 
-            <!-- PHONE -->
             <div class="mb-3">
                 <label class="form-label">Phone</label>
                 <input type="tel" class="form-control" name="phone_field"
@@ -106,7 +101,6 @@
                     <div class="invalid-feedback">Phone number is required</div>
             </div>
 
-            <!-- ADDRESS -->
             <div class="mb-3">
                 <label class="form-label">Address</label>
                 <input type="text" class="form-control" name="address_field"
@@ -115,7 +109,6 @@
                     <div class="invalid-feedback">Address is required</div>
             </div>
 
-            <!-- POSTCODE -->
             <div class="mb-3">
                 <label class="form-label">Postcode</label>
                 <input type="text" class="form-control"
@@ -127,7 +120,6 @@
                     <div class="invalid-feedback" id="postcodeFeedback">Postcode is required</div>
             </div>
 
-            <!-- BUTTONS -->
             <div class="d-grid gap-2">
                 <button class="btn btn-dark">Sign Up</button>
                 <a href="/" class="btn btn-outline-dark">Cancel</a>
@@ -139,6 +131,7 @@
 </div>
 
 <script>
+// references to all interactive form elements
 const usernameInput = document.getElementById('username');
 const feedback = document.getElementById('usernameFeedback');
 const passwordInput = document.getElementById("passwordInput");
@@ -146,15 +139,18 @@ const postcodeInput = document.getElementById('postcodeInput');
 const toggleBtn = document.getElementById("togglePassword");
 const capsWarning = document.getElementById("capsWarning");
 
+// timer reference to debounce username availability check
 let usernameTimer;
 
+// live username availability checker as the user types
 usernameInput.addEventListener('input', () => {
 
     const username = usernameInput.value.trim().toLowerCase();
 
+    // clear existing debounce timer to reset delay on each keystroke
     clearTimeout(usernameTimer);
 
-    // Only show error if actually too short
+    // show validation error if username is too short without waiting for debounce delay
     if (username.length > 0 && username.length < 4) {
         feedback.textContent = 'Username must be at least 4 characters';
         feedback.className = 'text-danger';
@@ -162,26 +158,29 @@ usernameInput.addEventListener('input', () => {
         return;
     }
 
-    // Clear message if empty
+    // clear message if empty
     if (username.length === 0) {
         feedback.textContent = '';
         usernameInput.setCustomValidity('');
         return;
     }
 
-    // Run availability check
+    // run availability check - only fires after user has stopped typing for 400ms 
     usernameTimer = setTimeout(() => {
 
+        // call username availability API endpoint from app.js and update feedback message
         fetch(`/api/check-username?username=${encodeURIComponent(username)}`)
             .then(res => res.json())
             .then(data => {
 
                 if (data.available) {
+                    // username is available — mark the field as valid and show a success message
                     feedback.textContent = '✓ Username available';
                     feedback.className = 'text-success';
                     usernameInput.setCustomValidity(''); // mark as valid
                     document.getElementById('usernameInvalidFeedback').textContent = 'Username is required';
                 } else {
+                    // username is already taken — mark the field as invalid to block form submission
                     feedback.textContent = '✗ Username already taken';
                     feedback.className = 'text-danger';
                     usernameInput.setCustomValidity('Username already taken'); // mark as invalid
@@ -190,24 +189,30 @@ usernameInput.addEventListener('input', () => {
 
             });
 
-    }, 400);
+    }, 400); // debounce API call by 400ms to avoid sending request on every keystroke
 });
 
+// mark postcode field as required on page load so bootstrap validation treats it as invalid before user has interacted with it
 document.addEventListener('DOMContentLoaded', () => {
     postcodeInput.setCustomValidity('required');
 });
 
+// live UK postcode format validation - fires as user types
+// validates against UK postcode regex
 postcodeInput.addEventListener('input', () => {
     const value = postcodeInput.value.trim().toUpperCase();
     const postcodeRegex = /^[A-Z]{1,2}\d[A-Z\d]?\s?\d[A-Z]{2}$/;
 
     if (value.length === 0) {
+        // field is empty — mark as invalid with a required message
         postcodeInput.setCustomValidity('required');
         document.getElementById('postcodeFeedback').textContent = 'Postcode is required';
     } else if (!postcodeRegex.test(value)) {
+        // field has a value but it does not match the UK postcode format
         postcodeInput.setCustomValidity('invalid');
         document.getElementById('postcodeFeedback').textContent = 'Please enter a valid UK postcode (e.g. BT1 1AA)';
     } else {
+        // postcode is valid — clear the custom validity error
         postcodeInput.setCustomValidity('');
         document.getElementById('postcodeFeedback').textContent = 'Postcode is required';
     }
@@ -221,16 +226,18 @@ document.getElementById('signupForm').addEventListener('submit', (e) => {
     }
 });
 
+// password field visibility toggle when show/hide button is clicked
+// switches input type between password (hidden) and text (visible) and updates icon accordingly
 toggleBtn.addEventListener("click", () => {
     const isPassword = passwordInput.type === "password";
 
     passwordInput.type = isPassword ? "text" : "password";
     toggleBtn.innerHTML = isPassword 
-    ? '<i class="bi bi-eye-slash"></i>' 
-    : '<i class="bi bi-eye"></i>';
+    ? '<i class="bi bi-eye-slash"></i>' // slash-eye when password is visible
+    : '<i class="bi bi-eye"></i>'; // eye icon when password hidden
 });
 
-// Caps lock detection
+// Caps lock detection similar on login page
 passwordInput.addEventListener("keyup", (event) => {
     if (event.getModifierState("CapsLock")) {
         capsWarning.style.display = "block";
@@ -247,6 +254,9 @@ passwordInput.addEventListener("keydown", (event) => {
     }
 });
 
+// bootstrap form validation - triggered on submit
+// prevents submission if any field fails HTML5 validation
+// adds was-validated class to show inline validation
 (() => {
     const form = document.getElementById('signupForm');
 

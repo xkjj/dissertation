@@ -24,6 +24,7 @@
 
         <div class="card shadow-sm p-4">
 
+        
           <% if (error) { %>
                 <div class="alert alert-danger alert-dismissible fade show" role="alert">
                     <strong>Login failed:</strong> <%= error %>
@@ -80,20 +81,23 @@
     </div>
 
 <script>
-const passwordInput = document.getElementById("passwordInput");
-const toggleBtn = document.getElementById("togglePassword");
-const capsWarning = document.getElementById("capsWarning");
+const passwordInput = document.getElementById("passwordInput"); // reference for password input field
+const toggleBtn = document.getElementById("togglePassword"); // reference for toggle password visibility button
+const capsWarning = document.getElementById("capsWarning"); // reference for caps lock warning
 
+// toggle password field visibility when show/hide button is clicked
+// switches input type between password (hidden) and text (visible)
 toggleBtn.addEventListener("click", () => {
     const isPassword = passwordInput.type === "password";
 
     passwordInput.type = isPassword ? "text" : "password";
     toggleBtn.innerHTML = isPassword 
-    ? '<i class="bi bi-eye-slash"></i>' 
-    : '<i class="bi bi-eye"></i>';
+    ? '<i class="bi bi-eye-slash"></i>' // slashed eye icon when password is visible
+    : '<i class="bi bi-eye"></i>'; // eye icon when password is hidden
 });
 
-// Caps lock detection
+// caps lock detection when user releases a key
+// shows/hides caps lock warning message accordingly
 passwordInput.addEventListener("keyup", (event) => {
     if (event.getModifierState("CapsLock")) {
         capsWarning.style.display = "block";
@@ -102,6 +106,7 @@ passwordInput.addEventListener("keyup", (event) => {
     }
 });
 
+// check caps lock state on keydown to catch case where user presses Caps lock itself - would not trigger keyup detection alone
 passwordInput.addEventListener("keydown", (event) => {
     if (event.getModifierState("CapsLock")) {
         capsWarning.style.display = "block";

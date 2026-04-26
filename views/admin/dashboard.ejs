@@ -186,6 +186,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script>
+// filter the users table based on the current values of the search, role and status inputs
 function filterUsers() {
     const search = document.getElementById('searchInput').value.toLowerCase();
     const role = document.getElementById('roleFilter').value;
@@ -195,19 +196,21 @@ function filterUsers() {
     let visible = 0;
 
     rows.forEach(row => {
-        const nameMatch = !search || row.dataset.name.includes(search);
-        const roleMatch = !role || row.dataset.role === role;
-        const statusMatch = !status || row.dataset.status === status;
+        const nameMatch = !search || row.dataset.name.includes(search); // check whether row's name/username data attribute contains search - if no search is entered, all rows pass
+        const roleMatch = !role || row.dataset.role === role; // check whether row's role data matches role filter - if no role is selected, all rows pass
+        const statusMatch = !status || row.dataset.status === status; // check whether row's active status matches selected status filter - if no status is selected, all rows pass
 
-        const show = nameMatch && roleMatch && statusMatch;
+        const show = nameMatch && roleMatch && statusMatch; // only show row if it passes all 3 filter checks simultaneously
         row.style.display = show ? '' : 'none';
         if (show) visible++;
     });
 
+    // update count
     document.getElementById('userCount').textContent =
         `Showing ${visible} user${visible !== 1 ? 's' : ''}`;
 }
 
+// reset all filter inputs to their default empty state and re-run the filter
 function clearFilters() {
     document.getElementById('searchInput').value = '';
     document.getElementById('roleFilter').value = '';
@@ -215,9 +218,9 @@ function clearFilters() {
     filterUsers();
 }
 
-document.getElementById('searchInput').addEventListener('input', filterUsers);
-document.getElementById('roleFilter').addEventListener('change', filterUsers);
-document.getElementById('statusFilter').addEventListener('change', filterUsers);
+document.getElementById('searchInput').addEventListener('input', filterUsers); // re-filter the table in real time as the user types in the search box
+document.getElementById('roleFilter').addEventListener('change', filterUsers); // re-filter the table immediately when the role dropdown selection changes
+document.getElementById('statusFilter').addEventListener('change', filterUsers); // re-filter the table immediately when the status dropdown selection changes
 </script>
 </body>
 </html>

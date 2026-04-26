@@ -180,7 +180,7 @@
         <script>
             function filterItems(status) {
 
-                // Update active tab
+                // update active tab
                 document.querySelectorAll('#statusTabs .nav-link').forEach(btn => {
                     btn.classList.remove('active');
                     if (btn.getAttribute('onclick') === `filterItems('${status}')`) {
@@ -188,7 +188,7 @@
                     }
                 });
 
-                // Show/hide cards
+                // show/hide cards
                 const cards = document.querySelectorAll('.item-card');
                 let visible = 0;
 
@@ -198,12 +198,12 @@
                     if (match) visible++;
                 });
 
-                // Update count
+                // update count
                 document.getElementById('item-count').textContent =
                     `Showing ${visible} item${visible !== 1 ? 's' : ''}`;
             }
 
-            // Init count on load
+            // init count on load
             filterItems('all');
         </script>
 </body>

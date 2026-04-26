@@ -34,7 +34,6 @@
 
         <form id="donateForm" action="/items" method="POST" enctype="multipart/form-data" novalidate>
 
-            <!-- TITLE -->
             <div class="mb-3">
                 <label class="form-label fw-semibold">Item Title</label>
                 <input type="text" name="title" class="form-control"
@@ -44,7 +43,6 @@
                 <div class="invalid-feedback">Please enter a title (2–100 characters)</div>
             </div>
 
-            <!-- DESCRIPTION -->
             <div class="mb-3">
                 <label class="form-label fw-semibold">Description</label>
                 <textarea name="description" class="form-control" rows="3"
@@ -54,7 +52,6 @@
                 <div class="invalid-feedback">Please enter a description (5–500 characters)</div>
             </div>
 
-            <!-- CATEGORY + SIZE -->
             <div class="row mb-3">
                 <div class="col-md-6">
                     <label class="form-label fw-semibold">Category</label>
@@ -83,7 +80,6 @@
                 </div>
             </div>
 
-            <!-- CONDITION -->
             <div class="mb-3">
                 <label class="form-label fw-semibold">Condition</label>
                 <select name="condition_desc" class="form-select" required>
@@ -95,7 +91,6 @@
                 <div class="invalid-feedback">Please select a condition</div>
             </div>
 
-            <!-- CHARITY -->
             <div class="mb-3">
                 <label class="form-label fw-semibold">Assign to Charity</label>
                 <select name="charity_id" class="form-select">
@@ -108,7 +103,6 @@
                 </select>
             </div>
 
-            <!-- IMAGE -->
             <div class="mb-4">
                 <label class="form-label fw-semibold">Item Images</label>
                 <input type="file" id="imageInput" name="images"
@@ -117,7 +111,6 @@
                 <div id="previewContainer" class="d-flex flex-wrap gap-2 mt-3"></div>
             </div>
 
-            <!-- BUTTONS -->
             <div class="d-flex justify-content-between align-items-center mt-4">
                 <a href="/items/my" class="btn btn-outline-secondary">Cancel</a>
                 <button type="submit" class="btn btn-dark px-4">Submit Listing</button>
@@ -130,32 +123,40 @@
 </div>
 
 <script>
+// array to track selected image files before form submission
 let selectedFiles = [];
 
+// listen for new file selections from image imput
 document.getElementById("imageInput").addEventListener("change", function (event) {
     const newFiles = Array.from(event.target.files);
 
+    // enforce 5 image maximum - reject neww selection if exceeded
     if (selectedFiles.length + newFiles.length > 5) {
         alert(`Maximum 5 images allowed.`);
         event.target.value = '';
         return;
     }
 
-    // Add new files to array
+    // add new files to array
     selectedFiles = selectedFiles.concat(newFiles);
 
+    // re-render image previews to reflect updated selection
     renderPreviews();
 });
 
-// Render previews
+// render thumbnail previews for selected images
+// called whenever selectedFiles array changes
 function renderPreviews() {
     const container = document.getElementById("previewContainer");
-    container.innerHTML = "";
+    container.innerHTML = ""; // clear existing previews before re-rendering
 
     selectedFiles.forEach((file, index) => {
+
+        // create wrapper div to position the remove button above the image
         const wrapper = document.createElement("div");
         wrapper.style.position = "relative";
 
+        // create image preview thumbnail from selected file
         const img = document.createElement("img");
         img.src = URL.createObjectURL(file);
         img.style.width = "100px";
@@ -163,6 +164,7 @@ function renderPreviews() {
         img.style.objectFit = "cover";
         img.classList.add("rounded", "border");
 
+        // create remove button to sit on top right of thumbnail
         const removeBtn = document.createElement("button");
         removeBtn.innerHTML = "×";
         removeBtn.type = "button";
@@ -176,6 +178,7 @@ function renderPreviews() {
         removeBtn.style.padding = "0";
         removeBtn.style.lineHeight = "1";
 
+        // remove image from selectedFiles array and re-render previews when clicked
         removeBtn.onclick = () => {
             selectedFiles.splice(index, 1);
             renderPreviews();
@@ -187,9 +190,9 @@ function renderPreviews() {
     });
 }
 
-// Before submit, replace file input with selectedFiles
+// before submit, sync selectedFiles array back to file input - file input cannot be directly manipulated
 document.querySelector("form").addEventListener("submit", function (e) {
-    const dataTransfer = new DataTransfer();
+    const dataTransfer = new DataTransfer(); // dataTransfer object used to reconstruct file list from selectedFiles
 
     selectedFiles.forEach(file => {
         dataTransfer.items.add(file);
@@ -198,7 +201,9 @@ document.querySelector("form").addEventListener("submit", function (e) {
     document.getElementById("imageInput").files = dataTransfer.files;
 });
 
-// Bootstrap validation
+// bootstrap validation triggered on submit
+// prevents submission if any required field fails HTML5 validation constraints
+// adds was-validated class to show inline validations
 (() => {
     const form = document.getElementById('donateForm');
 

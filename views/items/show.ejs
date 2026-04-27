@@ -70,7 +70,9 @@
         <p><strong>Condition:</strong> <%= item.condition_desc %></p>
         <p><strong>Charity:</strong> <%= item.charity_name || 'Not assigned' %></p>
 
-        <p class="text-muted">Donated by: <%= item.username %></p>
+        <% if (user && (user.role === 'charity_admin' || user.role === 'sys_admin')) { %>
+            <p class="text-muted">Donated by: <%= item.username %></p>
+        <% } %>
 
         <hr>
 
